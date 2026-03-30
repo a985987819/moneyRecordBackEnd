@@ -1,4 +1,4 @@
-import { prisma } from '../config/database'
+import { db } from '../config/database'
 import { hashPassword, verifyPassword } from '../utils/password'
 import {
   generateAccessToken,
@@ -7,26 +7,32 @@ import {
   revokeRefreshToken,
   revokeAllUserRefreshTokens,
 } from '../utils/token'
+import { categoryService } from './category.service'
 import type { LoginRequest, RegisterRequest, AuthResponse } from '../types/auth'
 
 export class AuthService {
   async register(data: RegisterRequest): Promise<AuthResponse> {
-    const existingUser = await prisma.user.findUnique({
-      where: { username: data.username },
-    })
+    const existingUser = await db.query(
+      'SELECT id FROM users WHERE username = $1',
+      [data.username]
+    )
 
-    if (existingUser) {
+    if (existingUser.rows.length > 0) {
       throw new Error('用户名已存在')
     }
 
     const hashedPassword = await hashPassword(data.password)
 
-    const user = await prisma.user.create({
-      data: {
-        username: data.username,
-        password: hashedPassword,
-      },
-    })
+    const userResult = await db.query(
+      `INSERT INTO users (username, password) 
+       VALUES ($1, $2) 
+       RETURNING id, username, created_at as "createdAt"`,
+      [data.username, hashedPassword]
+    )
+
+    const user = userResult.rows[0]
+
+    await categoryService.initDefaultCategories(user.id)
 
     const accessToken = generateAccessToken({
       userId: user.id,
@@ -50,14 +56,16 @@ export class AuthService {
   }
 
   async login(data: LoginRequest): Promise<AuthResponse> {
-    const user = await prisma.user.findUnique({
-      where: { username: data.username },
-    })
+    const userResult = await db.query(
+      'SELECT id, username, password, created_at as "createdAt" FROM users WHERE username = $1',
+      [data.username]
+    )
 
-    if (!user) {
+    if (userResult.rows.length === 0) {
       throw new Error('用户名或密码错误')
     }
 
+    const user = userResult.rows[0]
     const isPasswordValid = await verifyPassword(data.password, user.password)
 
     if (!isPasswordValid) {

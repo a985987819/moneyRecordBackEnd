@@ -7,15 +7,13 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0",
     "bcryptjs": "^3.0.3",
-    "bun": ">=1.0.0",
     "hono": "^4.12.9",
     "jsonwebtoken": "^9.0.3",
-    "node": ">=18",
-    "prisma": "5.22.0"
+    "pg": "^8.13.1"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/pg": "^8.11.10"
   }
 }

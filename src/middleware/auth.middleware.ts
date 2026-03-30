@@ -1,6 +1,6 @@
 import type { Context, Next } from 'hono'
 import { verifyAccessToken } from '../utils/token'
-import { prisma } from '../config/database'
+import { db } from '../config/database'
 
 export interface AuthContext extends Context {
   Variables: {
@@ -27,11 +27,12 @@ export async function authMiddleware(c: AuthContext, next: Next) {
       return c.json({ error: '无效的令牌类型' }, 401)
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-    })
+    const userResult = await db.query(
+      'SELECT id FROM users WHERE id = $1',
+      [payload.userId]
+    )
 
-    if (!user) {
+    if (userResult.rows.length === 0) {
       return c.json({ error: '用户不存在' }, 401)
     }
 

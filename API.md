@@ -4,6 +4,7 @@
 
 - **基础 URL**: `http://localhost:9876` 或 `http://你的IP:9876`
 - **Content-Type**: `application/json`
+- **数据库**: PostgreSQL
 
 ---
 
@@ -47,14 +48,6 @@
 }
 ```
 
-#### 错误响应 (400)
-
-```json
-{
-  "error": "用户名已存在"
-}
-```
-
 ---
 
 ### 2. 用户登录
@@ -67,15 +60,6 @@
 |------|------|------|------|
 | username | string | 是 | 用户名 |
 | password | string | 是 | 密码 |
-
-#### 请求示例
-
-```json
-{
-  "username": "testuser",
-  "password": "123456"
-}
-```
 
 #### 成功响应 (200)
 
@@ -95,61 +79,17 @@
 }
 ```
 
-#### 错误响应 (400)
-
-```json
-{
-  "error": "用户名或密码错误"
-}
-```
-
 ---
 
 ### 3. 刷新 Token
 
 **POST** `/api/auth/refresh`
 
-使用刷新令牌获取新的访问令牌。
-
 #### 请求参数
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | refreshToken | string | 是 | 刷新令牌 |
-
-#### 请求示例
-
-```json
-{
-  "refreshToken": "a1b2c3d4e5f6..."
-}
-```
-
-#### 成功响应 (200)
-
-```json
-{
-  "user": {
-    "id": 1,
-    "username": "testuser",
-    "createdAt": "2024-01-01T00:00:00.000Z"
-  },
-  "tokens": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "f6e5d4c3b2a1...",
-    "expiresIn": 7200,
-    "tokenType": "Bearer"
-  }
-}
-```
-
-#### 错误响应 (401)
-
-```json
-{
-  "error": "无效的刷新令牌"
-}
-```
 
 ---
 
@@ -157,29 +97,11 @@
 
 **POST** `/api/auth/logout`
 
-登出当前设备。
-
 #### 请求参数
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | refreshToken | string | 是 | 刷新令牌 |
-
-#### 请求示例
-
-```json
-{
-  "refreshToken": "a1b2c3d4e5f6..."
-}
-```
-
-#### 成功响应 (200)
-
-```json
-{
-  "message": "登出成功"
-}
-```
 
 ---
 
@@ -187,29 +109,7 @@
 
 **POST** `/api/auth/logout-all`
 
-从所有设备登出（需要认证）。
-
-#### 请求头
-
-```
-Authorization: Bearer <accessToken>
-```
-
-#### 成功响应 (200)
-
-```json
-{
-  "message": "已从所有设备登出"
-}
-```
-
-#### 错误响应 (401)
-
-```json
-{
-  "error": "未提供认证令牌"
-}
-```
+需要认证。
 
 ---
 
@@ -217,95 +117,242 @@ Authorization: Bearer <accessToken>
 
 **GET** `/api/auth/profile`
 
-获取当前登录用户信息（需要认证）。
+需要认证。
 
-#### 请求头
+---
 
+## 分类接口
+
+### 1. 获取支出分类列表
+
+**GET** `/api/categories/expense`
+
+需要认证。
+
+#### 成功响应 (200)
+
+```json
+[
+  {
+    "id": "1",
+    "name": "餐饮",
+    "icon": "🍔",
+    "type": "expense",
+    "color": "#FF6B6B"
+  }
+]
 ```
-Authorization: Bearer <accessToken>
-```
+
+---
+
+### 2. 获取收入分类列表
+
+**GET** `/api/categories/income`
+
+需要认证。
+
+---
+
+### 3. 获取所有分类
+
+**GET** `/api/categories`
+
+需要认证。
 
 #### 成功响应 (200)
 
 ```json
 {
-  "userId": 1,
-  "username": "testuser"
+  "expense": [
+    {
+      "id": "1",
+      "name": "餐饮",
+      "icon": "🍔",
+      "type": "expense",
+      "color": "#FF6B6B"
+    }
+  ],
+  "income": [
+    {
+      "id": "9",
+      "name": "工资",
+      "icon": "💰",
+      "type": "income",
+      "color": "#00B894"
+    }
+  ]
 }
 ```
 
-#### 错误响应 (401)
+---
+
+### 4. 创建分类
+
+**POST** `/api/categories`
+
+需要认证。
+
+#### 请求参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 分类名称 |
+| icon | string | 是 | 图标 |
+| type | string | 是 | expense/income/transfer/debt/reimbursement |
+| color | string | 否 | 颜色 |
+
+---
+
+### 5. 更新分类
+
+**PUT** `/api/categories/:id`
+
+需要认证。
+
+---
+
+### 6. 删除分类
+
+**DELETE** `/api/categories/:id`
+
+需要认证。
+
+---
+
+## 记账记录接口
+
+### 1. 获取月度统计
+
+**GET** `/api/records/stats?month=2024-01`
+
+需要认证。
+
+#### 成功响应 (200)
 
 ```json
 {
-  "error": "令牌已过期",
-  "code": "TOKEN_EXPIRED"
+  "totalExpense": 1500.00,
+  "totalIncome": 5000.00,
+  "budget": 5000
 }
 ```
+
+---
+
+### 2. 获取最近3天记录
+
+**GET** `/api/records/recent`
+
+需要认证。
+
+#### 成功响应 (200)
+
+```json
+[
+  {
+    "id": "1",
+    "type": "expense",
+    "category": "餐饮",
+    "categoryIcon": "🍔",
+    "amount": 35.50,
+    "remark": "午餐",
+    "date": "2024-01-15",
+    "account": "现金"
+  }
+]
+```
+
+---
+
+### 3. 获取所有记录
+
+**GET** `/api/records?startDate=2024-01-01&endDate=2024-01-31&type=expense`
+
+需要认证。
+
+#### 查询参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| startDate | string | 否 | 开始日期 |
+| endDate | string | 否 | 结束日期 |
+| type | string | 否 | expense/income |
+
+---
+
+### 4. 创建记账记录
+
+**POST** `/api/records`
+
+需要认证。
+
+#### 请求参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| type | string | 是 | expense/income |
+| category | string | 是 | 分类名称 |
+| categoryIcon | string | 是 | 分类图标 |
+| amount | number | 是 | 金额 |
+| remark | string | 是 | 备注 |
+| date | string | 是 | 日期 |
+| account | string | 是 | 账户 |
+
+#### 请求示例
+
+```json
+{
+  "type": "expense",
+  "category": "餐饮",
+  "categoryIcon": "🍔",
+  "amount": 35.50,
+  "remark": "午餐",
+  "date": "2024-01-15",
+  "account": "现金"
+}
+```
+
+---
+
+### 5. 更新记账记录
+
+**PUT** `/api/records/:id`
+
+需要认证。
+
+---
+
+### 6. 删除记账记录
+
+**DELETE** `/api/records/:id`
+
+需要认证。
 
 ---
 
 ## 健康检查
 
-### 服务健康状态
-
 **GET** `/health`
-
-#### 成功响应 (200)
-
-```json
-{
-  "status": "healthy",
-  "database": "connected"
-}
-```
-
-#### 错误响应 (500)
-
-```json
-{
-  "status": "unhealthy",
-  "database": "disconnected"
-}
-```
 
 ---
 
 ## 认证说明
 
-### Token 机制
-
-1. **Access Token**: 有效期 2 小时，用于 API 鉴权
-2. **Refresh Token**: 有效期 30 天，用于刷新 Access Token
-
-### 使用方式
-
-在请求头中添加：
+所有需要认证的接口都需要在请求头中添加：
 
 ```
 Authorization: Bearer <accessToken>
 ```
 
-### Token 刷新流程
-
-1. 当 Access Token 过期时，使用 Refresh Token 调用 `/api/auth/refresh`
-2. 获取新的 Access Token 和 Refresh Token
-3. 30 天内活跃可保持登录状态
-
-### 错误码说明
-
-| 状态码 | 说明 |
-|--------|------|
-| 200 | 请求成功 |
-| 201 | 创建成功 |
-| 400 | 请求参数错误 |
-| 401 | 未认证或令牌无效 |
-| 500 | 服务器内部错误 |
-
 ---
 
-## 密码安全
+## 环境配置
 
-- 密码使用 `bcryptjs` 加密存储
-- Salt Rounds: 12
-- 密码永不以明文存储或传输（建议使用 HTTPS）
+创建 `.env` 文件：
+
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/moneydb"
+JWT_SECRET="your-secret-key-change-this-in-production"
+JWT_EXPIRES_IN="2h"
+REFRESH_TOKEN_EXPIRES_IN="30d"
+```

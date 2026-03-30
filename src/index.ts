@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { authRoutes } from './routes/auth.routes'
-import { prisma } from './config/database'
+import { categoryRoutes } from './routes/category.routes'
+import { recordRoutes } from './routes/record.routes'
+import { db, initDatabase } from './config/database'
 
 const app = new Hono()
 
@@ -20,10 +22,12 @@ app.get('/', (c) => {
 })
 
 app.route('/api/auth', authRoutes)
+app.route('/api/categories', categoryRoutes)
+app.route('/api/records', recordRoutes)
 
 app.get('/health', async (c) => {
   try {
-    await prisma.$queryRaw`SELECT 1`
+    await db.query('SELECT 1')
     return c.json({ status: 'healthy', database: 'connected' })
   } catch {
     return c.json({ status: 'unhealthy', database: 'disconnected' }, 500)
@@ -36,10 +40,15 @@ const hostname = '0.0.0.0'
 console.log(`Server is running on http://localhost:${port}`)
 console.log(`Server is also accessible via network at http://0.0.0.0:${port}`)
 
-Bun.serve({
-  fetch: app.fetch,
-  port,
-  hostname,
+initDatabase().then(() => {
+  Bun.serve({
+    fetch: app.fetch,
+    port,
+    hostname,
+  })
+}).catch((error) => {
+  console.error('Failed to initialize database:', error)
+  process.exit(1)
 })
 
 export default app
