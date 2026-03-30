@@ -51,6 +51,7 @@ export const initDatabase = async () => {
         id SERIAL PRIMARY KEY,
         type VARCHAR(10) NOT NULL CHECK (type IN ('expense', 'income')),
         category VARCHAR(50) NOT NULL,
+        sub_category VARCHAR(50),
         category_icon VARCHAR(50) NOT NULL,
         amount DECIMAL(10, 2) NOT NULL,
         remark TEXT,

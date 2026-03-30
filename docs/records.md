@@ -56,7 +56,7 @@ GET /api/records/stats?month=2024-01
 
 **GET** `/recent`
 
-获取最近3天的记账记录，按日期倒序排列。
+获取最近3天的记账记录（不包含今天），按日期倒序排列。
 
 #### 请求头
 
@@ -72,6 +72,7 @@ Authorization: Bearer <accessToken>
     "id": "10",
     "type": "expense",
     "category": "餐饮",
+    "subCategory": "午餐",
     "categoryIcon": "🍔",
     "amount": 35.50,
     "remark": "午餐",
@@ -93,7 +94,100 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 3. 获取所有记录
+### 3. 分页获取记录（按日期分组）
+
+**GET** `/by-date`
+
+按日期分组获取记账记录，每次返回最近10个有记录的日期。
+
+#### 请求头
+
+```
+Authorization: Bearer <accessToken>
+```
+
+#### 查询参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| cursor | string | 否 | 分页游标（日期），首次请求不传，下次请求使用返回的 `nextCursor` |
+| limit | number | 否 | 每次返回的日期数量，默认10，最大20 |
+
+#### 请求示例
+
+```
+# 首次请求
+GET /api/records/by-date
+
+# 分页请求
+GET /api/records/by-date?cursor=2025-03-05&limit=10
+```
+
+#### 成功响应 (200)
+
+```json
+{
+  "data": [
+    {
+      "date": "2025-03-14",
+      "records": [
+        {
+          "id": "10",
+          "type": "expense",
+          "category": "餐饮",
+          "subCategory": "午餐",
+          "categoryIcon": "🍔",
+          "amount": 35.50,
+          "remark": "午餐",
+          "date": "2025-03-14",
+          "account": "现金"
+        }
+      ]
+    },
+    {
+      "date": "2025-03-10",
+      "records": [
+        {
+          "id": "9",
+          "type": "income",
+          "category": "工资",
+          "categoryIcon": "💰",
+          "amount": 8000.00,
+          "remark": "工资",
+          "date": "2025-03-10",
+          "account": "银行卡"
+        },
+        {
+          "id": "8",
+          "type": "expense",
+          "category": "交通",
+          "categoryIcon": "🚗",
+          "amount": 50.00,
+          "remark": "打车",
+          "date": "2025-03-10",
+          "account": "微信"
+        }
+      ]
+    }
+  ],
+  "hasMore": true,
+  "nextCursor": "2025-03-05"
+}
+```
+
+#### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| data | array | 按日期分组的数据列表 |
+| data[].date | string | 日期，格式：YYYY-MM-DD |
+| data[].records | array | 该日期下的所有记账记录 |
+| hasMore | boolean | 是否还有更多数据 |
+| nextCursor | string | 下次请求使用的游标（日期），当 hasMore 为 false 时不返回 |
+
+---
+
+### 4. 获取所有记录
 
 **GET** `/`
 
@@ -127,6 +221,7 @@ GET /api/records?startDate=2024-01-01&endDate=2024-01-31&type=expense
     "id": "10",
     "type": "expense",
     "category": "餐饮",
+    "subCategory": "午餐",
     "categoryIcon": "🍔",
     "amount": 35.50,
     "remark": "午餐",
@@ -148,7 +243,7 @@ GET /api/records?startDate=2024-01-01&endDate=2024-01-31&type=expense
 
 ---
 
-### 4. 创建记账记录
+### 5. 创建记账记录
 
 **POST** `/`
 
@@ -166,6 +261,7 @@ Authorization: Bearer <accessToken>
 |------|------|------|------|
 | type | string | 是 | 类型：expense（支出）/ income（收入） |
 | category | string | 是 | 分类名称，如"餐饮" |
+| subCategory | string | 否 | 子分类，如"午餐"、"晚餐" |
 | categoryIcon | string | 是 | 分类图标，如"🍔" |
 | amount | number | 是 | 金额，必须大于0 |
 | remark | string | 是 | 备注说明 |
@@ -178,6 +274,7 @@ Authorization: Bearer <accessToken>
 {
   "type": "expense",
   "category": "餐饮",
+  "subCategory": "午餐",
   "categoryIcon": "🍔",
   "amount": 35.50,
   "remark": "午餐",
@@ -193,6 +290,7 @@ Authorization: Bearer <accessToken>
   "id": "11",
   "type": "expense",
   "category": "餐饮",
+  "subCategory": "午餐",
   "categoryIcon": "🍔",
   "amount": 35.50,
   "remark": "午餐",
@@ -211,7 +309,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 5. 更新记账记录
+### 6. 更新记账记录
 
 **PUT** `/:id`
 
@@ -231,6 +329,7 @@ Authorization: Bearer <accessToken>
 |------|------|------|
 | type | string | 类型：expense/income |
 | category | string | 分类名称 |
+| subCategory | string | 子分类 |
 | categoryIcon | string | 分类图标 |
 | amount | number | 金额 |
 | remark | string | 备注 |
@@ -242,6 +341,7 @@ Authorization: Bearer <accessToken>
 ```json
 {
   "amount": 40.00,
+  "subCategory": "午餐+饮料",
   "remark": "午餐+饮料"
 }
 ```
@@ -253,6 +353,7 @@ Authorization: Bearer <accessToken>
   "id": "11",
   "type": "expense",
   "category": "餐饮",
+  "subCategory": "午餐+饮料",
   "categoryIcon": "🍔",
   "amount": 40.00,
   "remark": "午餐+饮料",
@@ -271,7 +372,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 6. 删除记账记录
+### 7. 删除记账记录
 
 **DELETE** `/:id`
 
@@ -308,6 +409,7 @@ interface RecordItem {
   id: string;
   type: 'expense' | 'income';
   category: string;
+  subCategory?: string;
   categoryIcon: string;
   amount: number;
   remark: string;
@@ -319,6 +421,17 @@ interface MonthlyStats {
   totalExpense: number;
   totalIncome: number;
   budget: number;
+}
+
+interface RecordsByDate {
+  date: string;
+  records: RecordItem[];
+}
+
+interface PaginatedRecordsResponse {
+  data: RecordsByDate[];
+  hasMore: boolean;
+  nextCursor?: string;
 }
 
 interface RecordQueryParams {

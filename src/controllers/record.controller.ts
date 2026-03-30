@@ -39,6 +39,24 @@ export class RecordController {
     }
   }
 
+  async getRecordsByDate(c: Context) {
+    try {
+      const user = c.get('user');
+      const cursor = c.req.query('cursor');
+      const limitParam = c.req.query('limit');
+      const limit = limitParam ? parseInt(limitParam, 10) : 10;
+
+      const result = await recordService.getRecordsByDatePaginated(
+        user.userId,
+        cursor,
+        limit
+      );
+      return c.json(result);
+    } catch (error) {
+      return c.json({ error: '获取记录失败' }, 500);
+    }
+  }
+
   async createRecord(c: Context) {
     try {
       const user = c.get('user');
