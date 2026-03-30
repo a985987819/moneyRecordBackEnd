@@ -30,7 +30,7 @@ app.get('/health', async (c) => {
   }
 })
 
-const port = 3003
+const port = 9876
 const hostname = '0.0.0.0'
 
 console.log(`Server is running on http://localhost:${port}`)
