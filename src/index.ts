@@ -31,11 +31,15 @@ app.get('/health', async (c) => {
 })
 
 const port = 3003
-console.log(`Server is running on在这里 http://localhost:${port}`)
+const hostname = '0.0.0.0'
+
+console.log(`Server is running on http://localhost:${port}`)
+console.log(`Server is also accessible via network at http://0.0.0.0:${port}`)
 
 Bun.serve({
   fetch: app.fetch,
   port,
+  hostname,
 })
 
 export default app
