@@ -86,7 +86,10 @@ export class RecordService {
     cursor?: string,
     limit: number = 10
   ): Promise<PaginatedRecordsResponse> {
-    const cursorDate = cursor || new Date().toISOString().split('T')[0];
+    // 如果没有 cursor，使用明天作为边界，确保能获取到今天的记录
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const cursorDate = cursor || tomorrow.toISOString().split('T')[0];
 
     const distinctDatesResult = await db.query(
       `SELECT DISTINCT date::text as date

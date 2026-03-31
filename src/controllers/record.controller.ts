@@ -62,6 +62,7 @@ export class RecordController {
         cursor,
         limit
       );
+      console.log(result, 123123)
       return c.json(result);
     } catch (error) {
       logger.error(`获取分页记录失败`, error as Error, { userId: user.userId, cursor, limit });
