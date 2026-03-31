@@ -61,3 +61,57 @@ export interface BatchImportResult {
   failed: number;
   errors?: string[];
 }
+
+// 报表统计相关类型
+export interface DailyStats {
+  date: string;
+  expense: number;
+  income: number;
+}
+
+export interface CategoryStats {
+  category: string;
+  categoryIcon: string;
+  type: 'expense' | 'income';
+  amount: number;
+  percentage: number;
+  count: number;
+}
+
+export interface ReportData {
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+  summary: {
+    totalExpense: number;
+    totalIncome: number;
+    balance: number;
+  };
+  dailyStats: DailyStats[];
+  categoryStats: {
+    expense: CategoryStats[];
+    income: CategoryStats[];
+  };
+}
+
+// 账单筛选参数
+export interface BillFilterParams {
+  year?: number;
+  month?: number;
+  startDate?: string;
+  endDate?: string;
+  type?: 'expense' | 'income';
+  categories?: string[];
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+export interface BillListResponse {
+  summary: {
+    totalExpense: number;
+    totalIncome: number;
+    count: number;
+  };
+  records: RecordItem[];
+}

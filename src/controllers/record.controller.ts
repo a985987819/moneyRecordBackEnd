@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import { recordService } from '../services/record.service';
 import { logger } from '../utils/logger';
-import type { RecordRequest, RecordQueryParams, ImportRecordRequest } from '../types/record';
+import type { RecordRequest, RecordQueryParams, ImportRecordRequest, BillFilterParams } from '../types/record';
 
 export class RecordController {
   async getMonthlyStats(c: Context) {
@@ -52,21 +52,69 @@ export class RecordController {
   async getRecordsByDate(c: Context) {
     const user = c.get('user');
     const cursor = c.req.query('cursor');
-    const limitParam = c.req.query('limit');
-    const limit = limitParam ? parseInt(limitParam, 10) : 10;
+    const limit = parseInt(c.req.query('limit') || '10');
 
     try {
       logger.info(`获取分页记录`, { userId: user.userId, cursor, limit });
-      const result = await recordService.getRecordsByDatePaginated(
-        user.userId,
-        cursor,
-        limit
-      );
-      console.log(result, 123123)
+      const result = await recordService.getRecordsByDatePaginated(user.userId, cursor, limit);
       return c.json(result);
     } catch (error) {
-      logger.error(`获取分页记录失败`, error as Error, { userId: user.userId, cursor, limit });
+      logger.error(`获取分页记录失败`, error as Error, { userId: user.userId, cursor });
       return c.json({ error: '获取记录失败' }, 500);
+    }
+  }
+
+  // 获取报表统计数据
+  async getReport(c: Context) {
+    const user = c.get('user');
+    const year = c.req.query('year') ? parseInt(c.req.query('year')!) : undefined;
+    const month = c.req.query('month') ? parseInt(c.req.query('month')!) : undefined;
+
+    try {
+      logger.info(`获取报表数据`, { userId: user.userId, year, month });
+      const report = await recordService.getReportData(user.userId, year, month);
+      return c.json(report);
+    } catch (error) {
+      logger.error(`获取报表数据失败`, error as Error, { userId: user.userId, year, month });
+      return c.json({ error: '获取报表数据失败' }, 500);
+    }
+  }
+
+  // 账单筛选查询
+  async getBills(c: Context) {
+    const user = c.get('user');
+
+    // 解析查询参数
+    const params: BillFilterParams = {};
+
+    const year = c.req.query('year');
+    const month = c.req.query('month');
+    if (year) params.year = parseInt(year);
+    if (month) params.month = parseInt(month);
+
+    params.startDate = c.req.query('startDate') || undefined;
+    params.endDate = c.req.query('endDate') || undefined;
+    params.type = (c.req.query('type') as 'expense' | 'income') || undefined;
+
+    // 分类支持多个，用逗号分隔
+    const categoriesStr = c.req.query('categories');
+    if (categoriesStr) {
+      params.categories = categoriesStr.split(',').map(c => c.trim());
+    }
+
+    // 金额范围
+    const minAmount = c.req.query('minAmount');
+    const maxAmount = c.req.query('maxAmount');
+    if (minAmount !== undefined) params.minAmount = parseFloat(minAmount);
+    if (maxAmount !== undefined) params.maxAmount = parseFloat(maxAmount);
+
+    try {
+      logger.info(`获取账单列表`, { userId: user.userId, params });
+      const result = await recordService.getBillsWithFilter(user.userId, params);
+      return c.json(result);
+    } catch (error) {
+      logger.error(`获取账单列表失败`, error as Error, { userId: user.userId, params });
+      return c.json({ error: '获取账单列表失败' }, 500);
     }
   }
 
@@ -109,13 +157,10 @@ export class RecordController {
       logger.info(`删除导入记录`, { userId: user.userId });
       const result = await recordService.deleteImportRecords(user.userId);
       logger.info(`删除导入记录成功`, { userId: user.userId, deletedCount: result.deletedCount });
-      return c.json({
-        message: '导入数据删除成功',
-        deletedCount: result.deletedCount,
-      });
+      return c.json(result);
     } catch (error) {
       logger.error(`删除导入记录失败`, error as Error, { userId: user.userId });
-      return c.json({ error: '删除导入数据失败' }, 500);
+      return c.json({ error: '删除导入记录失败' }, 500);
     }
   }
 
@@ -130,7 +175,7 @@ export class RecordController {
         return c.json({ error: '类型、分类、金额和日期不能为空' }, 400);
       }
 
-      logger.info(`创建记录`, { userId: user.userId, type: body.type, amount: body.amount, date: body.date });
+      logger.info(`创建记录`, { userId: user.userId, body });
       const record = await recordService.createRecord(user.userId, body);
       logger.info(`创建记录成功`, { userId: user.userId, recordId: record.id });
       return c.json(record, 201);

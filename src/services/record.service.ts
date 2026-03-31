@@ -1,5 +1,19 @@
 import { db } from '../config/database';
-import type { RecordItem, RecordRequest, MonthlyStats, RecordQueryParams, PaginatedRecordsResponse, RecordsByDate, ImportRecordRequest, BatchImportResult } from '../types/record';
+import type {
+  RecordItem,
+  RecordRequest,
+  MonthlyStats,
+  RecordQueryParams,
+  PaginatedRecordsResponse,
+  RecordsByDate,
+  ImportRecordRequest,
+  BatchImportResult,
+  ReportData,
+  DailyStats,
+  CategoryStats,
+  BillFilterParams,
+  BillListResponse
+} from '../types/record';
 
 export class RecordService {
   async getMonthlyStats(userId: number, month?: string): Promise<MonthlyStats> {
@@ -138,6 +152,194 @@ export class RecordService {
       data,
       hasMore,
       nextCursor: hasMore ? targetDates[targetDates.length - 1] : undefined,
+    };
+  }
+
+  // 获取报表统计数据
+  async getReportData(userId: number, year?: number, month?: number): Promise<ReportData> {
+    const now = new Date();
+    const targetYear = year || now.getFullYear();
+    const targetMonth = month || (now.getMonth() + 1);
+
+    // 构建日期范围
+    const startDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+    const endDate = month
+      ? `${targetYear}-${String(targetMonth).padStart(2, '0')}-31`
+      : `${targetYear}-12-31`;
+
+    // 获取每日统计
+    const dailyResult = await db.query(
+      `SELECT 
+        date::text as date,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expense,
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as income
+       FROM records 
+       WHERE user_id = $1 AND date >= $2 AND date <= $3
+       GROUP BY date
+       ORDER BY date ASC`,
+      [userId, startDate, endDate]
+    );
+
+    // 获取分类统计 - 支出
+    const expenseCategoryResult = await db.query(
+      `SELECT 
+        category,
+        category_icon as "categoryIcon",
+        COALESCE(SUM(amount), 0) as amount,
+        COUNT(*) as count
+       FROM records 
+       WHERE user_id = $1 AND date >= $2 AND date <= $3 AND type = 'expense'
+       GROUP BY category, category_icon
+       ORDER BY amount DESC`,
+      [userId, startDate, endDate]
+    );
+
+    // 获取分类统计 - 收入
+    const incomeCategoryResult = await db.query(
+      `SELECT 
+        category,
+        category_icon as "categoryIcon",
+        COALESCE(SUM(amount), 0) as amount,
+        COUNT(*) as count
+       FROM records 
+       WHERE user_id = $1 AND date >= $2 AND date <= $3 AND type = 'income'
+       GROUP BY category, category_icon
+       ORDER BY amount DESC`,
+      [userId, startDate, endDate]
+    );
+
+    // 计算总支出和总收入
+    const totalExpense = expenseCategoryResult.rows.reduce(
+      (sum, row) => sum + parseFloat(row.amount), 0
+    );
+    const totalIncome = incomeCategoryResult.rows.reduce(
+      (sum, row) => sum + parseFloat(row.amount), 0
+    );
+
+    // 构建分类统计数据（包含百分比）
+    const expenseCategoryStats: CategoryStats[] = expenseCategoryResult.rows.map(row => ({
+      category: row.category,
+      categoryIcon: row.categoryIcon,
+      type: 'expense',
+      amount: parseFloat(row.amount),
+      percentage: totalExpense > 0 ? parseFloat(((parseFloat(row.amount) / totalExpense) * 100).toFixed(2)) : 0,
+      count: parseInt(row.count),
+    }));
+
+    const incomeCategoryStats: CategoryStats[] = incomeCategoryResult.rows.map(row => ({
+      category: row.category,
+      categoryIcon: row.categoryIcon,
+      type: 'income',
+      amount: parseFloat(row.amount),
+      percentage: totalIncome > 0 ? parseFloat(((parseFloat(row.amount) / totalIncome) * 100).toFixed(2)) : 0,
+      count: parseInt(row.count),
+    }));
+
+    return {
+      period: {
+        startDate,
+        endDate,
+      },
+      summary: {
+        totalExpense,
+        totalIncome,
+        balance: totalIncome - totalExpense,
+      },
+      dailyStats: dailyResult.rows.map(row => ({
+        date: row.date,
+        expense: parseFloat(row.expense),
+        income: parseFloat(row.income),
+      })),
+      categoryStats: {
+        expense: expenseCategoryStats,
+        income: incomeCategoryStats,
+      },
+    };
+  }
+
+  // 账单筛选查询
+  async getBillsWithFilter(userId: number, params: BillFilterParams): Promise<BillListResponse> {
+    let query = `
+      SELECT 
+        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
+        amount, remark, date::text, account, is_import as "isImport"
+      FROM records 
+      WHERE user_id = $1
+    `;
+    const queryParams: any[] = [userId];
+    let paramIndex = 2;
+
+    // 按年月查询
+    if (params.year && params.month) {
+      query += ` AND TO_CHAR(date, 'YYYY-MM') = $${paramIndex}`;
+      queryParams.push(`${params.year}-${String(params.month).padStart(2, '0')}`);
+      paramIndex++;
+    } else if (params.year) {
+      query += ` AND TO_CHAR(date, 'YYYY') = $${paramIndex}`;
+      queryParams.push(String(params.year));
+      paramIndex++;
+    }
+
+    // 按日期范围查询
+    if (params.startDate) {
+      query += ` AND date >= $${paramIndex}`;
+      queryParams.push(params.startDate);
+      paramIndex++;
+    }
+
+    if (params.endDate) {
+      query += ` AND date <= $${paramIndex}`;
+      queryParams.push(params.endDate);
+      paramIndex++;
+    }
+
+    // 按类型查询
+    if (params.type) {
+      query += ` AND type = $${paramIndex}`;
+      queryParams.push(params.type);
+      paramIndex++;
+    }
+
+    // 按分类查询
+    if (params.categories && params.categories.length > 0) {
+      query += ` AND category = ANY($${paramIndex})`;
+      queryParams.push(params.categories);
+      paramIndex++;
+    }
+
+    // 按金额范围查询
+    if (params.minAmount !== undefined) {
+      query += ` AND amount >= $${paramIndex}`;
+      queryParams.push(params.minAmount);
+      paramIndex++;
+    }
+
+    if (params.maxAmount !== undefined) {
+      query += ` AND amount <= $${paramIndex}`;
+      queryParams.push(params.maxAmount);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY date DESC, created_at DESC`;
+
+    const result = await db.query(query, queryParams);
+    const records = result.rows;
+
+    // 计算汇总数据
+    const totalExpense = records
+      .filter(r => r.type === 'expense')
+      .reduce((sum, r) => sum + parseFloat(r.amount), 0);
+    const totalIncome = records
+      .filter(r => r.type === 'income')
+      .reduce((sum, r) => sum + parseFloat(r.amount), 0);
+
+    return {
+      summary: {
+        totalExpense,
+        totalIncome,
+        count: records.length,
+      },
+      records,
     };
   }
 

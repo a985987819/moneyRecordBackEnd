@@ -52,7 +52,200 @@ GET /api/records/stats?month=2024-01
 
 ---
 
-### 2. 获取最近3天记录
+### 2. 获取报表统计数据
+
+**GET** `/report`
+
+获取指定时间段的详细报表数据，包括每日统计和分类统计，用于生成统计图表。
+
+#### 请求头
+
+```
+Authorization: Bearer <accessToken>
+```
+
+#### 查询参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| year | number | 否 | 年份，如 2026，默认为当前年 |
+| month | number | 否 | 月份，如 3，不传则查询全年 |
+
+#### 请求示例
+
+```
+# 获取2026年3月报表
+GET /api/records/report?year=2026&month=3
+
+# 获取2026年全年报表
+GET /api/records/report?year=2026
+```
+
+#### 成功响应 (200)
+
+```json
+{
+  "period": {
+    "startDate": "2026-03-01",
+    "endDate": "2026-03-31"
+  },
+  "summary": {
+    "totalExpense": 5362.58,
+    "totalIncome": 0,
+    "balance": -5362.58
+  },
+  "dailyStats": [
+    {
+      "date": "2026-03-01",
+      "expense": 1965.83,
+      "income": 0
+    },
+    {
+      "date": "2026-03-02",
+      "expense": 79.49,
+      "income": 0
+    }
+  ],
+  "categoryStats": {
+    "expense": [
+      {
+        "category": "住宿",
+        "categoryIcon": "🏠",
+        "type": "expense",
+        "amount": 2238.40,
+        "percentage": 41.74,
+        "count": 3
+      },
+      {
+        "category": "吃",
+        "categoryIcon": "🍽️",
+        "type": "expense",
+        "amount": 1349.35,
+        "percentage": 25.16,
+        "count": 50
+      }
+    ],
+    "income": [
+      {
+        "category": "工资",
+        "categoryIcon": "💰",
+        "type": "income",
+        "amount": 8000.00,
+        "percentage": 100,
+        "count": 1
+      }
+    ]
+  }
+}
+```
+
+#### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| period | object | 查询时间段 |
+| period.startDate | string | 开始日期 |
+| period.endDate | string | 结束日期 |
+| summary | object | 汇总数据 |
+| summary.totalExpense | number | 总支出 |
+| summary.totalIncome | number | 总收入 |
+| summary.balance | number | 结余（收入-支出）|
+| dailyStats | array | 每日收支统计（用于折线图）|
+| dailyStats[].date | string | 日期 |
+| dailyStats[].expense | number | 当日支出 |
+| dailyStats[].income | number | 当日收入 |
+| categoryStats | object | 分类统计 |
+| categoryStats.expense | array | 支出分类统计（用于饼图）|
+| categoryStats.income | array | 收入分类统计（用于饼图）|
+| categoryStats[].category | string | 分类名称 |
+| categoryStats[].categoryIcon | string | 分类图标 |
+| categoryStats[].type | string | 类型：expense/income |
+| categoryStats[].amount | number | 该分类总金额 |
+| categoryStats[].percentage | number | 占比百分比 |
+| categoryStats[].count | number | 记录数量 |
+
+---
+
+### 3. 账单筛选查询
+
+**GET** `/bills`
+
+支持多种筛选条件的账单查询，可按年月、日期范围、类型、分类、金额范围筛选。
+
+#### 请求头
+
+```
+Authorization: Bearer <accessToken>
+```
+
+#### 查询参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| year | number | 否 | 按年查询，如 2026 |
+| month | number | 否 | 按月查询（需配合 year），如 3 |
+| startDate | string | 否 | 开始日期，格式：YYYY-MM-DD |
+| endDate | string | 否 | 结束日期，格式：YYYY-MM-DD |
+| type | string | 否 | 收支类型：expense（支出）/ income（收入）|
+| categories | string | 否 | 分类筛选，多个分类用逗号分隔，如"吃,交通,购物" |
+| minAmount | number | 否 | 最小金额（包含）|
+| maxAmount | number | 否 | 最大金额（包含）|
+
+#### 请求示例
+
+```
+# 筛选2026年3月的支出记录
+GET /api/records/bills?year=2026&month=3&type=expense
+
+# 筛选金额大于100的分类为"吃"或"交通"的记录
+GET /api/records/bills?minAmount=100&categories=吃,交通
+
+# 筛选日期范围和金额范围
+GET /api/records/bills?startDate=2026-03-01&endDate=2026-03-15&minAmount=50&maxAmount=500
+
+# 综合筛选：2026年3月，支出类型，餐饮分类，金额50-500
+GET /api/records/bills?year=2026&month=3&type=expense&categories=餐饮&minAmount=50&maxAmount=500
+```
+
+#### 成功响应 (200)
+
+```json
+{
+  "summary": {
+    "totalExpense": 5362.58,
+    "totalIncome": 0,
+    "count": 100
+  },
+  "records": [
+    {
+      "id": "10",
+      "type": "expense",
+      "category": "餐饮",
+      "subCategory": "午餐",
+      "categoryIcon": "🍔",
+      "amount": 35.50,
+      "remark": "午餐",
+      "date": "2026-03-15",
+      "account": "现金",
+      "isImport": false
+    }
+  ]
+}
+```
+
+#### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| summary | object | 汇总数据 |
+| summary.totalExpense | number | 筛选结果总支出 |
+| summary.totalIncome | number | 筛选结果总收入 |
+| summary.count | number | 记录总数 |
+| records | array | 记账记录列表 |
+
+---
+
+### 4. 获取最近3天记录
 
 **GET** `/recent`
 
@@ -94,7 +287,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 3. 分页获取记录（按日期分组）
+### 5. 分页获取记录（按日期分组）
 
 **GET** `/by-date`
 
@@ -187,7 +380,7 @@ GET /api/records/by-date?cursor=2025-03-05&limit=10
 
 ---
 
-### 4. 获取所有记录
+### 6. 获取所有记录
 
 **GET** `/`
 
@@ -243,7 +436,7 @@ GET /api/records?startDate=2024-01-01&endDate=2024-01-31&type=expense
 
 ---
 
-### 5. 创建记账记录
+### 7. 创建记账记录
 
 **POST** `/`
 
@@ -309,7 +502,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 6. 批量导入记账记录
+### 8. 批量导入记账记录
 
 **POST** `/import`
 
@@ -399,7 +592,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 7. 删除导入的记账记录
+### 9. 删除导入的记账记录
 
 **DELETE** `/import`
 
@@ -422,7 +615,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 8. 更新记账记录
+### 10. 更新记账记录
 
 **PUT** `/:id`
 
@@ -485,7 +678,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 9. 删除记账记录
+### 11. 删除记账记录
 
 **DELETE** `/:id`
 
@@ -548,37 +741,70 @@ interface PaginatedRecordsResponse {
   nextCursor?: string;
 }
 
-interface ImportRecordRequest {
-  type: 'expense' | 'income';
-  category: string;
-  subCategory?: string;
-  categoryIcon: string;
-  amount: number;
-  remark: string;
+// 报表相关类型
+interface DailyStats {
   date: string;
-  account: string;
+  expense: number;
+  income: number;
 }
 
-interface BatchImportResult {
-  success: number;
-  failed: number;
-  errors?: string[];
+interface CategoryStats {
+  category: string;
+  categoryIcon: string;
+  type: 'expense' | 'income';
+  amount: number;
+  percentage: number;
+  count: number;
 }
 
-interface RecordQueryParams {
+interface ReportData {
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+  summary: {
+    totalExpense: number;
+    totalIncome: number;
+    balance: number;
+  };
+  dailyStats: DailyStats[];
+  categoryStats: {
+    expense: CategoryStats[];
+    income: CategoryStats[];
+  };
+}
+
+// 账单筛选参数
+interface BillFilterParams {
+  year?: number;
+  month?: number;
   startDate?: string;
   endDate?: string;
-  type?: string;
+  type?: 'expense' | 'income';
+  categories?: string[];
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+interface BillListResponse {
+  summary: {
+    totalExpense: number;
+    totalIncome: number;
+    count: number;
+  };
+  records: RecordItem[];
 }
 ```
 
 ---
 
-## 常用账户类型建议
+## 错误码说明
 
-- 现金
-- 银行卡
-- 信用卡
-- 微信支付
-- 支付宝
-- 云闪付
+| HTTP 状态码 | 说明 |
+|------------|------|
+| 200 | 请求成功 |
+| 201 | 创建成功 |
+| 400 | 请求参数错误 |
+| 401 | 未认证或认证失败 |
+| 404 | 资源不存在 |
+| 500 | 服务器内部错误 |
