@@ -309,7 +309,120 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 6. 更新记账记录
+### 6. 批量导入记账记录
+
+**POST** `/import`
+
+批量导入记账记录，导入的记录会标记 `isImport: true`。
+
+#### 请求头
+
+```
+Authorization: Bearer <accessToken>
+```
+
+#### 请求参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| records | array | 是 | 记录数组，最多 1000 条 |
+| records[].type | string | 是 | 类型：expense/income |
+| records[].category | string | 是 | 分类名称 |
+| records[].subCategory | string | 否 | 子分类 |
+| records[].categoryIcon | string | 否 | 分类图标，默认 📦 |
+| records[].amount | number | 是 | 金额 |
+| records[].remark | string | 否 | 备注，默认空字符串 |
+| records[].date | string | 是 | 日期，格式：YYYY-MM-DD |
+| records[].account | string | 否 | 账户，默认"现金" |
+
+#### 请求示例
+
+```json
+{
+  "records": [
+    {
+      "type": "expense",
+      "category": "餐饮",
+      "subCategory": "午餐",
+      "categoryIcon": "🍔",
+      "amount": 35.50,
+      "remark": "午餐",
+      "date": "2024-01-15",
+      "account": "现金"
+    },
+    {
+      "type": "income",
+      "category": "工资",
+      "amount": 8000.00,
+      "remark": "1月工资",
+      "date": "2024-01-15",
+      "account": "银行卡"
+    }
+  ]
+}
+```
+
+#### 成功响应 (201)
+
+```json
+{
+  "success": 2,
+  "failed": 0
+}
+```
+
+#### 部分失败响应 (201)
+
+```json
+{
+  "success": 1,
+  "failed": 1,
+  "errors": [
+    "第 2 条记录: 类型、分类、金额和日期不能为空"
+  ]
+}
+```
+
+#### 错误响应 (400)
+
+```json
+{
+  "error": "请提供要导入的记录数组"
+}
+```
+
+```json
+{
+  "error": "单次导入最多支持 1000 条记录"
+}
+```
+
+---
+
+### 7. 删除导入的记账记录
+
+**DELETE** `/import`
+
+删除当前用户所有导入的记录（`isImport: true` 的记录）。
+
+#### 请求头
+
+```
+Authorization: Bearer <accessToken>
+```
+
+#### 成功响应 (200)
+
+```json
+{
+  "message": "导入数据删除成功",
+  "deletedCount": 150
+}
+```
+
+---
+
+### 8. 更新记账记录
 
 **PUT** `/:id`
 
@@ -372,7 +485,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 7. 删除记账记录
+### 9. 删除记账记录
 
 **DELETE** `/:id`
 
@@ -415,6 +528,7 @@ interface RecordItem {
   remark: string;
   date: string;
   account: string;
+  isImport?: boolean;
 }
 
 interface MonthlyStats {
@@ -432,6 +546,23 @@ interface PaginatedRecordsResponse {
   data: RecordsByDate[];
   hasMore: boolean;
   nextCursor?: string;
+}
+
+interface ImportRecordRequest {
+  type: 'expense' | 'income';
+  category: string;
+  subCategory?: string;
+  categoryIcon: string;
+  amount: number;
+  remark: string;
+  date: string;
+  account: string;
+}
+
+interface BatchImportResult {
+  success: number;
+  failed: number;
+  errors?: string[];
 }
 
 interface RecordQueryParams {

@@ -57,6 +57,7 @@ export const initDatabase = async () => {
         remark TEXT,
         date DATE NOT NULL,
         account VARCHAR(50) NOT NULL,
+        is_import BOOLEAN DEFAULT FALSE,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

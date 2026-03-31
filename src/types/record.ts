@@ -8,6 +8,7 @@ export interface RecordItem {
   remark: string;
   date: string;
   account: string;
+  isImport?: boolean;
 }
 
 export interface MonthlyStats {
@@ -17,6 +18,17 @@ export interface MonthlyStats {
 }
 
 export interface RecordRequest {
+  type: 'expense' | 'income';
+  category: string;
+  subCategory?: string;
+  categoryIcon: string;
+  amount: number;
+  remark: string;
+  date: string;
+  account: string;
+}
+
+export interface ImportRecordRequest {
   type: 'expense' | 'income';
   category: string;
   subCategory?: string;
@@ -42,4 +54,10 @@ export interface PaginatedRecordsResponse {
   data: RecordsByDate[];
   hasMore: boolean;
   nextCursor?: string;
+}
+
+export interface BatchImportResult {
+  success: number;
+  failed: number;
+  errors?: string[];
 }

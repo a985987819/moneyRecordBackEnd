@@ -4,6 +4,7 @@ import { authRoutes } from './routes/auth.routes'
 import { categoryRoutes } from './routes/category.routes'
 import { recordRoutes } from './routes/record.routes'
 import { db, initDatabase } from './config/database'
+import { logger } from './utils/logger'
 
 const app = new Hono()
 
@@ -13,6 +14,26 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }))
+
+app.use('*', async (c, next) => {
+  const start = Date.now()
+  const method = c.req.method
+  const path = c.req.path
+
+  logger.info(`请求开始`, { method, path })
+
+  try {
+    await next()
+  } catch (error) {
+    logger.error(`请求处理异常`, error as Error, { method, path })
+    throw error
+  }
+
+  const duration = Date.now() - start
+  const status = c.res.status
+
+  logger.request(method, path, status, duration)
+})
 
 app.get('/', (c) => {
   return c.json({
@@ -28,8 +49,10 @@ app.route('/api/records', recordRoutes)
 app.get('/health', async (c) => {
   try {
     await db.query('SELECT 1')
+    logger.debug(`健康检查通过`)
     return c.json({ status: 'healthy', database: 'connected' })
-  } catch {
+  } catch (error) {
+    logger.error(`健康检查失败`, error as Error)
     return c.json({ status: 'unhealthy', database: 'disconnected' }, 500)
   }
 })
@@ -37,18 +60,16 @@ app.get('/health', async (c) => {
 const port = 9876
 const hostname = '0.0.0.0'
 
-console.log(`Server is running on http://localhost:${port}`)
-console.log(`Server is also accessible via network at http://0.0.0.0:${port}`)
+logger.info(`服务器启动`, { port, hostname })
 
 initDatabase().then(() => {
+  logger.info(`数据库初始化成功`)
   Bun.serve({
     fetch: app.fetch,
     port,
     hostname,
   })
 }).catch((error) => {
-  console.error('Failed to initialize database:', error)
+  logger.error(`数据库初始化失败`, error)
   process.exit(1)
 })
-
-export default app

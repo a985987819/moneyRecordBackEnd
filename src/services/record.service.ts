@@ -1,5 +1,5 @@
 import { db } from '../config/database';
-import type { RecordItem, RecordRequest, MonthlyStats, RecordQueryParams, PaginatedRecordsResponse, RecordsByDate } from '../types/record';
+import type { RecordItem, RecordRequest, MonthlyStats, RecordQueryParams, PaginatedRecordsResponse, RecordsByDate, ImportRecordRequest, BatchImportResult } from '../types/record';
 
 export class RecordService {
   async getMonthlyStats(userId: number, month?: string): Promise<MonthlyStats> {
@@ -33,7 +33,7 @@ export class RecordService {
     const result = await db.query(
       `SELECT 
         id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-        amount, remark, date::text, account
+        amount, remark, date::text, account, is_import as "isImport"
        FROM records 
        WHERE user_id = $1 
          AND date >= $2 
@@ -50,7 +50,7 @@ export class RecordService {
     let query = `
       SELECT 
         id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-        amount, remark, date::text, account
+        amount, remark, date::text, account, is_import as "isImport"
       FROM records 
       WHERE user_id = $1
     `;
@@ -111,7 +111,7 @@ export class RecordService {
     const recordsResult = await db.query(
       `SELECT 
         id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-        amount, remark, date::text, account
+        amount, remark, date::text, account, is_import as "isImport"
        FROM records 
        WHERE user_id = $1 AND date = ANY($2)
        ORDER BY date DESC, created_at DESC`,
@@ -143,10 +143,72 @@ export class RecordService {
       `INSERT INTO records (type, category, sub_category, category_icon, amount, remark, date, account, user_id) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
        RETURNING id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-                 amount, remark, date::text, account`,
+                 amount, remark, date::text, account, is_import as "isImport"`,
       [data.type, data.category, data.subCategory || null, data.categoryIcon, data.amount, data.remark, data.date, data.account, userId]
     );
     return result.rows[0];
+  }
+
+  async batchImportRecords(userId: number, records: ImportRecordRequest[]): Promise<BatchImportResult> {
+    const client = await db.getClient();
+
+    try {
+      await client.query('BEGIN');
+
+      let success = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < records.length; i++) {
+        const record = records[i];
+
+        if (!record.type || !record.category || !record.amount || !record.date) {
+          errors.push(`第 ${i + 1} 条记录: 类型、分类、金额和日期不能为空`);
+          continue;
+        }
+
+        try {
+          await client.query(
+            `INSERT INTO records (type, category, sub_category, category_icon, amount, remark, date, account, is_import, user_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9)`,
+            [
+              record.type,
+              record.category,
+              record.subCategory || null,
+              record.categoryIcon || '📦',
+              record.amount,
+              record.remark || '',
+              record.date,
+              record.account || '现金',
+              userId
+            ]
+          );
+          success++;
+        } catch (error) {
+          errors.push(`第 ${i + 1} 条记录导入失败: ${error}`);
+        }
+      }
+
+      await client.query('COMMIT');
+
+      return {
+        success,
+        failed: records.length - success,
+        errors: errors.length > 0 ? errors : undefined,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async deleteImportRecords(userId: number): Promise<{ deletedCount: number }> {
+    const result = await db.query(
+      `DELETE FROM records WHERE user_id = $1 AND is_import = TRUE RETURNING id`,
+      [userId]
+    );
+    return { deletedCount: result.rowCount || 0 };
   }
 
   async updateRecord(userId: number, id: string, data: Partial<RecordRequest>): Promise<RecordItem | null> {
@@ -163,7 +225,7 @@ export class RecordService {
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $9 AND user_id = $10
        RETURNING id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-                 amount, remark, date::text, account`,
+                 amount, remark, date::text, account, is_import as "isImport"`,
       [data.type, data.category, data.subCategory, data.categoryIcon, data.amount, data.remark, data.date, data.account, id, userId]
     );
     return result.rows[0] || null;
@@ -181,7 +243,7 @@ export class RecordService {
     const result = await db.query(
       `SELECT 
         id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-        amount, remark, date::text, account
+        amount, remark, date::text, account, is_import as "isImport"
        FROM records 
        WHERE id = $1 AND user_id = $2`,
       [id, userId]
