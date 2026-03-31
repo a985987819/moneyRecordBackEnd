@@ -1,4 +1,5 @@
 import { db } from '../config/database';
+import { formatDateTime, extractDate } from '../utils/date';
 import type {
   RecordItem,
   RecordRequest,
@@ -12,7 +13,14 @@ import type {
   DailyStats,
   CategoryStats,
   BillFilterParams,
-  BillListResponse
+  BillListResponse,
+  RecurringRecordRequest,
+  RecurringRecordResult,
+  RecurringFrequency,
+  DeduplicateResult,
+  DeduplicatePreviewResult,
+  DuplicateGroup,
+  DuplicateRecord
 } from '../types/record';
 
 export class RecordService {
@@ -45,12 +53,12 @@ export class RecordService {
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
     const result = await db.query(
-      `SELECT 
-        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-        amount, remark, date::text, account, is_import as "isImport"
-       FROM records 
-       WHERE user_id = $1 
-         AND date >= $2 
+      `SELECT
+        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon",
+        amount, remark, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, account, is_import as "isImport"
+       FROM records
+       WHERE user_id = $1
+         AND date >= $2
          AND date < $3
        ORDER BY date DESC, created_at DESC
        LIMIT 50`,
@@ -62,10 +70,10 @@ export class RecordService {
 
   async getRecords(userId: number, params?: RecordQueryParams): Promise<RecordItem[]> {
     let query = `
-      SELECT 
-        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-        amount, remark, date::text, account, is_import as "isImport"
-      FROM records 
+      SELECT
+        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon",
+        amount, remark, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, account, is_import as "isImport"
+      FROM records
       WHERE user_id = $1
     `;
     const queryParams: any[] = [userId];
@@ -106,8 +114,8 @@ export class RecordService {
     const cursorDate = cursor || tomorrow.toISOString().split('T')[0];
 
     const distinctDatesResult = await db.query(
-      `SELECT DISTINCT date::text as date
-       FROM records 
+      `SELECT DISTINCT TO_CHAR(date, 'YYYY-MM-DD') as date
+       FROM records
        WHERE user_id = $1 AND date < $2
        ORDER BY date DESC
        LIMIT $3`,
@@ -126,21 +134,22 @@ export class RecordService {
     }
 
     const recordsResult = await db.query(
-      `SELECT 
-        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-        amount, remark, date::text, account, is_import as "isImport"
-       FROM records 
-       WHERE user_id = $1 AND date = ANY($2)
+      `SELECT
+        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon",
+        amount, remark, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, account, is_import as "isImport"
+       FROM records
+       WHERE user_id = $1 AND TO_CHAR(date, 'YYYY-MM-DD') = ANY($2)
        ORDER BY date DESC, created_at DESC`,
       [userId, targetDates]
     );
 
     const recordsByDate: Map<string, RecordItem[]> = new Map();
     for (const record of recordsResult.rows) {
-      if (!recordsByDate.has(record.date)) {
-        recordsByDate.set(record.date, []);
+      const dateKey = extractDate(record.date);
+      if (!recordsByDate.has(dateKey)) {
+        recordsByDate.set(dateKey, []);
       }
-      recordsByDate.get(record.date)!.push(record);
+      recordsByDate.get(dateKey)!.push(record);
     }
 
     const data: RecordsByDate[] = targetDates.map(date => ({
@@ -260,10 +269,10 @@ export class RecordService {
   // 账单筛选查询
   async getBillsWithFilter(userId: number, params: BillFilterParams): Promise<BillListResponse> {
     let query = `
-      SELECT 
-        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-        amount, remark, date::text, account, is_import as "isImport"
-      FROM records 
+      SELECT
+        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon",
+        amount, remark, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, account, is_import as "isImport"
+      FROM records
       WHERE user_id = $1
     `;
     const queryParams: any[] = [userId];
@@ -343,13 +352,135 @@ export class RecordService {
     };
   }
 
+  // 生成定时记账记录
+  private generateRecurringDates(
+    frequency: RecurringFrequency,
+    startDate: string,
+    endDate: Date
+  ): string[] {
+    const dates: string[] = [];
+    const start = new Date(startDate);
+    const current = new Date(start);
+
+    while (current <= endDate) {
+      const dayOfWeek = current.getDay();
+      const dateStr = current.toISOString().split('T')[0];
+
+      switch (frequency) {
+        case 'daily':
+          dates.push(dateStr);
+          break;
+        case 'workday':
+          // 周一到周五 (1-5)
+          if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+            dates.push(dateStr);
+          }
+          break;
+        case 'weekly':
+          // 每周同一天（与开始日期相同的星期几）
+          if (dayOfWeek === start.getDay()) {
+            dates.push(dateStr);
+          }
+          break;
+        case 'monthly':
+          // 每月同一天
+          if (current.getDate() === start.getDate()) {
+            dates.push(dateStr);
+          }
+          break;
+      }
+
+      // 增加一天
+      current.setDate(current.getDate() + 1);
+    }
+
+    return dates;
+  }
+
+  // 创建定时记账记录
+  async createRecurringRecords(
+    userId: number,
+    data: RecurringRecordRequest
+  ): Promise<RecurringRecordResult> {
+    // 计算结束日期
+    const durationValue = data.durationValue || 1;
+    const durationUnit = data.durationUnit || 'year';
+
+    const endDate = new Date(data.startDate);
+    if (durationUnit === 'year') {
+      endDate.setFullYear(endDate.getFullYear() + durationValue);
+    } else {
+      endDate.setMonth(endDate.getMonth() + durationValue);
+    }
+
+    // 生成日期列表
+    const dates = this.generateRecurringDates(data.frequency, data.startDate, endDate);
+
+    if (dates.length === 0) {
+      return {
+        success: 0,
+        failed: 0,
+        generatedDates: [],
+        errors: ['没有生成任何记录，请检查日期范围'],
+      };
+    }
+
+    const client = await db.getClient();
+    let success = 0;
+    const errors: string[] = [];
+
+    try {
+      await client.query('BEGIN');
+
+      for (const date of dates) {
+        try {
+          await client.query(
+            `INSERT INTO records (type, category, sub_category, category_icon, amount, remark, date, account, user_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+              data.type,
+              data.category,
+              data.subCategory || null,
+              data.categoryIcon,
+              data.amount,
+              data.remark,
+              date,
+              data.account,
+              userId
+            ]
+          );
+          success++;
+        } catch (error) {
+          errors.push(`日期 ${date} 创建失败: ${error}`);
+        }
+      }
+
+      await client.query('COMMIT');
+
+      return {
+        success,
+        failed: dates.length - success,
+        generatedDates: dates,
+        errors: errors.length > 0 ? errors : undefined,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async createRecord(userId: number, data: RecordRequest): Promise<RecordItem> {
+    // 转换日期格式
+    const formattedDate = formatDateTime(data.date);
+
     const result = await db.query(
-      `INSERT INTO records (type, category, sub_category, category_icon, amount, remark, date, account, user_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-       RETURNING id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-                 amount, remark, date::text, account, is_import as "isImport"`,
-      [data.type, data.category, data.subCategory || null, data.categoryIcon, data.amount, data.remark, data.date, data.account, userId]
+      `INSERT INTO records (type, category, sub_category, category_icon, amount, remark, date, account, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon",
+                 amount, remark, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, account, is_import as "isImport"`,
+      [data.type, data.category, data.subCategory || null, data.categoryIcon, data.amount, data.remark, formattedDate, data.account, userId]
     );
     return result.rows[0];
   }
@@ -372,8 +503,11 @@ export class RecordService {
         }
 
         try {
+          // 转换日期格式
+          const formattedDate = formatDateTime(record.date);
+
           await client.query(
-            `INSERT INTO records (type, category, sub_category, category_icon, amount, remark, date, account, is_import, user_id) 
+            `INSERT INTO records (type, category, sub_category, category_icon, amount, remark, date, account, is_import, user_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9)`,
             [
               record.type,
@@ -382,7 +516,7 @@ export class RecordService {
               record.categoryIcon || '📦',
               record.amount,
               record.remark || '',
-              record.date,
+              formattedDate,
               record.account || '现金',
               userId
             ]
@@ -417,21 +551,24 @@ export class RecordService {
   }
 
   async updateRecord(userId: number, id: string, data: Partial<RecordRequest>): Promise<RecordItem | null> {
+    // 如果传了日期，转换格式
+    const formattedDate = data.date ? formatDateTime(data.date) : undefined;
+
     const result = await db.query(
-      `UPDATE records 
-       SET type = COALESCE($1, type), 
-           category = COALESCE($2, category), 
-           sub_category = COALESCE($3, sub_category), 
-           category_icon = COALESCE($4, category_icon), 
-           amount = COALESCE($5, amount), 
-           remark = COALESCE($6, remark), 
-           date = COALESCE($7, date), 
+      `UPDATE records
+       SET type = COALESCE($1, type),
+           category = COALESCE($2, category),
+           sub_category = COALESCE($3, sub_category),
+           category_icon = COALESCE($4, category_icon),
+           amount = COALESCE($5, amount),
+           remark = COALESCE($6, remark),
+           date = COALESCE($7, date),
            account = COALESCE($8, account),
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $9 AND user_id = $10
-       RETURNING id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-                 amount, remark, date::text, account, is_import as "isImport"`,
-      [data.type, data.category, data.subCategory, data.categoryIcon, data.amount, data.remark, data.date, data.account, id, userId]
+       RETURNING id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon",
+                 amount, remark, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, account, is_import as "isImport"`,
+      [data.type, data.category, data.subCategory, data.categoryIcon, data.amount, data.remark, formattedDate, data.account, id, userId]
     );
     return result.rows[0] || null;
   }
@@ -446,14 +583,125 @@ export class RecordService {
 
   async getRecordById(userId: number, id: string): Promise<RecordItem | null> {
     const result = await db.query(
-      `SELECT 
-        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon", 
-        amount, remark, date::text, account, is_import as "isImport"
-       FROM records 
+      `SELECT
+        id::text, type, category, sub_category as "subCategory", category_icon as "categoryIcon",
+        amount, remark, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, account, is_import as "isImport"
+       FROM records
        WHERE id = $1 AND user_id = $2`,
       [id, userId]
     );
     return result.rows[0] || null;
+  }
+
+  // 查找重复记录（预览）
+  async findDuplicateRecords(userId: number): Promise<DeduplicatePreviewResult> {
+    // 查询所有记录，用于检测重复
+    const result = await db.query(
+      `SELECT
+        id::text, type, category, amount, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, remark
+       FROM records
+       WHERE user_id = $1
+       ORDER BY date DESC, created_at DESC`,
+      [userId]
+    );
+
+    const records = result.rows;
+    const duplicateMap = new Map<string, DuplicateRecord[]>();
+
+    // 按完整时间、金额、分类、类型分组
+    for (const record of records) {
+      // 使用完整时间、金额、分类、类型作为重复检测的key
+      const key = `${record.date}_${record.amount}_${record.category}_${record.type}`;
+
+      if (!duplicateMap.has(key)) {
+        duplicateMap.set(key, []);
+      }
+      duplicateMap.get(key)!.push({
+        id: record.id,
+        type: record.type,
+        category: record.category,
+        amount: parseFloat(record.amount),
+        date: record.date,
+        remark: record.remark,
+      });
+    }
+
+    // 筛选出有重复的记录组
+    const duplicateGroups: DuplicateGroup[] = [];
+    let totalDuplicates = 0;
+
+    for (const [key, groupRecords] of duplicateMap.entries()) {
+      if (groupRecords.length > 1) {
+        // 保留第一条（最新的），其余标记为重复
+        duplicateGroups.push({
+          key,
+          count: groupRecords.length,
+          records: groupRecords,
+          keepId: groupRecords[0].id, // 保留最新的一条
+        });
+        totalDuplicates += groupRecords.length - 1;
+      }
+    }
+
+    // 按重复数量倒序排列
+    duplicateGroups.sort((a, b) => b.count - a.count);
+
+    return {
+      scannedCount: records.length,
+      duplicateGroups,
+      totalDuplicates,
+    };
+  }
+
+  // 删除重复记录
+  async deduplicateRecords(userId: number): Promise<DeduplicateResult> {
+    const preview = await this.findDuplicateRecords(userId);
+
+    if (preview.duplicateGroups.length === 0) {
+      return {
+        scannedCount: preview.scannedCount,
+        duplicateGroups: preview.duplicateGroups,
+        totalDuplicates: 0,
+        deletedCount: 0,
+      };
+    }
+
+    const client = await db.getClient();
+    let deletedCount = 0;
+
+    try {
+      await client.query('BEGIN');
+
+      for (const group of preview.duplicateGroups) {
+        // 保留 keepId，删除其他记录
+        const idsToDelete = group.records
+          .filter(r => r.id !== group.keepId)
+          .map(r => r.id);
+
+        if (idsToDelete.length > 0) {
+          const result = await client.query(
+            `DELETE FROM records 
+             WHERE user_id = $1 AND id = ANY($2)`,
+            [userId, idsToDelete]
+          );
+          deletedCount += result.rowCount || 0;
+        }
+      }
+
+      await client.query('COMMIT');
+
+      return {
+        scannedCount: preview.scannedCount,
+        duplicateGroups: preview.duplicateGroups,
+        totalDuplicates: preview.totalDuplicates,
+        deletedCount,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 

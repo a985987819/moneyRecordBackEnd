@@ -6,7 +6,7 @@ export interface RecordItem {
   categoryIcon: string;
   amount: number;
   remark: string;
-  date: string;
+  date: string; // 格式: YYYY-MM-DD HH:mm:ss
   account: string;
   isImport?: boolean;
 }
@@ -24,7 +24,7 @@ export interface RecordRequest {
   categoryIcon: string;
   amount: number;
   remark: string;
-  date: string;
+  date: string | number; // 支持字符串(YYYY-MM-DD HH:mm:ss)或时间戳(毫秒)
   account: string;
 }
 
@@ -35,7 +35,7 @@ export interface ImportRecordRequest {
   categoryIcon: string;
   amount: number;
   remark: string;
-  date: string;
+  date: string | number;
   account: string;
 }
 
@@ -114,4 +114,69 @@ export interface BillListResponse {
     count: number;
   };
   records: RecordItem[];
+}
+
+// 定时记账相关类型
+export type RecurringFrequency = 'daily' | 'workday' | 'weekly' | 'monthly';
+
+export interface RecurringRecordRequest {
+  type: 'expense' | 'income';
+  category: string;
+  subCategory?: string;
+  categoryIcon: string;
+  amount: number;
+  remark: string;
+  account: string;
+  frequency: RecurringFrequency;
+  startDate: string;
+  durationValue?: number;
+  durationUnit?: 'month' | 'year';
+}
+
+export interface RecurringRecordResult {
+  success: number;
+  failed: number;
+  generatedDates: string[];
+  errors?: string[];
+}
+
+export interface GeneratedRecord {
+  date: string;
+  type: 'expense' | 'income';
+  category: string;
+  subCategory?: string;
+  categoryIcon: string;
+  amount: number;
+  remark: string;
+  account: string;
+}
+
+// 重复数据去重相关类型
+export interface DuplicateRecord {
+  id: string;
+  type: 'expense' | 'income';
+  category: string;
+  amount: number;
+  date: string; // 格式: YYYY-MM-DD HH:mm:ss
+  remark: string;
+}
+
+export interface DuplicateGroup {
+  key: string;
+  count: number;
+  records: DuplicateRecord[];
+  keepId: string;
+}
+
+export interface DeduplicateResult {
+  scannedCount: number;
+  duplicateGroups: DuplicateGroup[];
+  totalDuplicates: number;
+  deletedCount: number;
+}
+
+export interface DeduplicatePreviewResult {
+  scannedCount: number;
+  duplicateGroups: DuplicateGroup[];
+  totalDuplicates: number;
 }

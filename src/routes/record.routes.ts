@@ -22,6 +22,13 @@ recordRoutes.get('/', (c: AuthContext) => recordController.getRecords(c));
 recordRoutes.post('/import', (c: AuthContext) => recordController.batchImport(c));
 recordRoutes.delete('/import', (c: AuthContext) => recordController.deleteImportRecords(c));
 
+// 定时记账
+recordRoutes.post('/recurring', (c: AuthContext) => recordController.createRecurringRecords(c));
+
+// 重复数据去重
+recordRoutes.get('/duplicates/preview', (c: AuthContext) => recordController.previewDuplicates(c));
+recordRoutes.delete('/duplicates', (c: AuthContext) => recordController.deduplicateRecords(c));
+
 // CRUD
 recordRoutes.post('/', (c: AuthContext) => recordController.createRecord(c));
 recordRoutes.put('/:id', (c: AuthContext) => recordController.updateRecord(c));

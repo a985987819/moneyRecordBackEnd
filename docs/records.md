@@ -374,7 +374,7 @@ GET /api/records/by-date?cursor=2025-03-05&limit=10
 |------|------|------|
 | data | array | 按日期分组的数据列表 |
 | data[].date | string | 日期，格式：YYYY-MM-DD |
-| data[].records | array | 该日期下的所有记账记录 |
+| data[].records | array | 该日期下的所有记账记录（每条记录的 date 字段格式为 YYYY-MM-DD HH:mm:ss）|
 | hasMore | boolean | 是否还有更多数据 |
 | nextCursor | string | 下次请求使用的游标（日期），当 hasMore 为 false 时不返回 |
 
@@ -458,7 +458,7 @@ Authorization: Bearer <accessToken>
 | categoryIcon | string | 是 | 分类图标，如"🍔" |
 | amount | number | 是 | 金额，必须大于0 |
 | remark | string | 是 | 备注说明 |
-| date | string | 是 | 日期，格式：YYYY-MM-DD |
+| date | string/number | 是 | 日期时间，支持格式：YYYY-MM-DD HH:mm:ss 或时间戳（毫秒）|
 | account | string | 是 | 账户，如"现金"、"银行卡"、"微信"、"支付宝" |
 
 #### 请求示例
@@ -471,7 +471,19 @@ Authorization: Bearer <accessToken>
   "categoryIcon": "🍔",
   "amount": 35.50,
   "remark": "午餐",
-  "date": "2024-01-15",
+  "date": "2024-01-15 12:30:00",
+  "account": "现金"
+}
+```
+
+或使用时间戳：
+
+```json
+{
+  "type": "expense",
+  "category": "餐饮",
+  "amount": 35.50,
+  "date": 1705312200000,
   "account": "现金"
 }
 ```
@@ -525,7 +537,7 @@ Authorization: Bearer <accessToken>
 | records[].categoryIcon | string | 否 | 分类图标，默认 📦 |
 | records[].amount | number | 是 | 金额 |
 | records[].remark | string | 否 | 备注，默认空字符串 |
-| records[].date | string | 是 | 日期，格式：YYYY-MM-DD |
+| records[].date | string/number | 是 | 日期时间，支持格式：YYYY-MM-DD HH:mm:ss 或时间戳（毫秒）|
 | records[].account | string | 否 | 账户，默认"现金" |
 
 #### 请求示例
@@ -540,7 +552,7 @@ Authorization: Bearer <accessToken>
       "categoryIcon": "🍔",
       "amount": 35.50,
       "remark": "午餐",
-      "date": "2024-01-15",
+      "date": "2024-01-15 12:30:00",
       "account": "现金"
     },
     {
@@ -548,7 +560,7 @@ Authorization: Bearer <accessToken>
       "category": "工资",
       "amount": 8000.00,
       "remark": "1月工资",
-      "date": "2024-01-15",
+      "date": "2024-01-15 09:00:00",
       "account": "银行卡"
     }
   ]
@@ -639,7 +651,7 @@ Authorization: Bearer <accessToken>
 | categoryIcon | string | 分类图标 |
 | amount | number | 金额 |
 | remark | string | 备注 |
-| date | string | 日期 |
+| date | string/number | 日期时间，支持格式：YYYY-MM-DD HH:mm:ss 或时间戳（毫秒）|
 | account | string | 账户 |
 
 #### 请求示例
@@ -708,6 +720,102 @@ Authorization: Bearer <accessToken>
 
 ---
 
+### 12. 创建定时记账记录
+
+**POST** `/recurring`
+
+创建定时重复记账记录，系统会根据频率自动生成指定范围内的多条记账记录。
+
+#### 请求头
+
+```
+Authorization: Bearer <accessToken>
+```
+
+#### 请求参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| type | string | 是 | 类型：expense（支出）/ income（收入） |
+| category | string | 是 | 分类名称，如"餐饮" |
+| subCategory | string | 否 | 子分类，如"午餐" |
+| categoryIcon | string | 是 | 分类图标，如"🍔" |
+| amount | number | 是 | 金额，必须大于0 |
+| remark | string | 是 | 备注说明 |
+| account | string | 是 | 账户，如"现金"、"银行卡" |
+| frequency | string | 是 | 记账频率：daily（每天）、workday（每个工作日）、weekly（每周）、monthly（每月） |
+| startDate | string | 是 | 开始日期，格式：YYYY-MM-DD |
+| durationValue | number | 否 | 重复范围数值，默认为 1 |
+| durationUnit | string | 否 | 重复范围单位：month（月）/ year（年），默认为 year |
+
+#### 频率说明
+
+| 频率值 | 说明 |
+|--------|------|
+| daily | 每天生成一条记录 |
+| workday | 每个工作日（周一到周五）生成一条记录 |
+| weekly | 每周同一天（与开始日期相同的星期几）生成一条记录 |
+| monthly | 每月同一天（与开始日期相同的日期）生成一条记录 |
+
+#### 请求示例
+
+```json
+{
+  "type": "expense",
+  "category": "餐饮",
+  "subCategory": "午餐",
+  "categoryIcon": "🍔",
+  "amount": 35.00,
+  "remark": "工作日午餐",
+  "account": "现金",
+  "frequency": "workday",
+  "startDate": "2026-04-01",
+  "durationValue": 3,
+  "durationUnit": "month"
+}
+```
+
+#### 成功响应 (201)
+
+```json
+{
+  "success": 66,
+  "failed": 0,
+  "generatedDates": [
+    "2026-04-01",
+    "2026-04-02",
+    "2026-04-03",
+    "2026-04-06",
+    "2026-04-07"
+  ]
+}
+```
+
+#### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| success | number | 成功创建的记录数 |
+| failed | number | 创建失败的记录数 |
+| generatedDates | array | 生成的所有日期列表 |
+| errors | array | 错误信息列表（如果有失败） |
+
+#### 错误响应 (400)
+
+```json
+{
+  "error": "类型、分类、金额、开始日期和频率不能为空"
+}
+```
+
+```json
+{
+  "error": "频率必须是 daily、workday、weekly 或 monthly"
+}
+```
+
+---
+
 ## 数据类型
 
 ```typescript
@@ -719,7 +827,7 @@ interface RecordItem {
   categoryIcon: string;
   amount: number;
   remark: string;
-  date: string;
+  date: string; // 格式: YYYY-MM-DD HH:mm:ss
   account: string;
   isImport?: boolean;
 }
@@ -793,6 +901,206 @@ interface BillListResponse {
     count: number;
   };
   records: RecordItem[];
+}
+
+// 定时记账相关类型
+type RecurringFrequency = 'daily' | 'workday' | 'weekly' | 'monthly';
+
+interface RecurringRecordRequest {
+  type: 'expense' | 'income';
+  category: string;
+  subCategory?: string;
+  categoryIcon: string;
+  amount: number;
+  remark: string;
+  account: string;
+  frequency: RecurringFrequency;
+  startDate: string;
+  durationValue?: number;
+  durationUnit?: 'month' | 'year';
+}
+
+interface RecurringRecordResult {
+  success: number;
+  failed: number;
+  generatedDates: string[];
+  errors?: string[];
+}
+```
+
+---
+
+### 13. 预览重复记录
+
+**GET** `/duplicates/preview`
+
+检测用户的记账记录中，日期、金额、分类、类型完全相同的重复记录，返回重复记录的分组信息供预览。
+
+#### 请求头
+
+```
+Authorization: Bearer <accessToken>
+```
+
+#### 成功响应 (200)
+
+```json
+{
+  "scannedCount": 150,
+  "duplicateGroups": [
+    {
+      "key": "2026-03-15_35.00_餐饮_expense",
+      "count": 3,
+      "records": [
+        {
+          "id": "123",
+          "type": "expense",
+          "category": "餐饮",
+          "amount": 35.00,
+          "date": "2026-03-15",
+          "remark": "午餐"
+        },
+        {
+          "id": "124",
+          "type": "expense",
+          "category": "餐饮",
+          "amount": 35.00,
+          "date": "2026-03-15",
+          "remark": "午餐"
+        },
+        {
+          "id": "125",
+          "type": "expense",
+          "category": "餐饮",
+          "amount": 35.00,
+          "date": "2026-03-15",
+          "remark": "午餐"
+        }
+      ],
+      "keepId": "123"
+    }
+  ],
+  "totalDuplicates": 2
+}
+```
+
+#### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| scannedCount | number | 扫描的记录总数 |
+| duplicateGroups | array | 重复记录分组列表 |
+| duplicateGroups[].key | string | 重复检测的key（日期_金额_分类_类型）|
+| duplicateGroups[].count | number | 该组重复记录数量 |
+| duplicateGroups[].records | array | 重复记录详情列表 |
+| duplicateGroups[].keepId | string | 将保留的记录ID（最新的一条）|
+| totalDuplicates | number | 总共可以删除的重复记录数 |
+
+---
+
+### 14. 删除重复记录
+
+**DELETE** `/duplicates`
+
+删除日期、金额、分类、类型完全相同的重复记录，保留最新的一条。
+
+#### 请求头
+
+```
+Authorization: Bearer <accessToken>
+```
+
+#### 成功响应 (200)
+
+```json
+{
+  "scannedCount": 150,
+  "duplicateGroups": [
+    {
+      "key": "2026-03-15_35.00_餐饮_expense",
+      "count": 3,
+      "records": [
+        {
+          "id": "123",
+          "type": "expense",
+          "category": "餐饮",
+          "amount": 35.00,
+          "date": "2026-03-15",
+          "remark": "午餐"
+        },
+        {
+          "id": "124",
+          "type": "expense",
+          "category": "餐饮",
+          "amount": 35.00,
+          "date": "2026-03-15",
+          "remark": "午餐"
+        },
+        {
+          "id": "125",
+          "type": "expense",
+          "category": "餐饮",
+          "amount": 35.00,
+          "date": "2026-03-15",
+          "remark": "午餐"
+        }
+      ],
+      "keepId": "123"
+    }
+  ],
+  "totalDuplicates": 2,
+  "deletedCount": 2
+}
+```
+
+#### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| scannedCount | number | 扫描的记录总数 |
+| duplicateGroups | array | 重复记录分组列表（同预览接口）|
+| totalDuplicates | number | 总共检测到的重复记录数 |
+| deletedCount | number | 实际删除的记录数 |
+
+#### 去重规则
+
+- **检测维度**：完整时间（YYYY-MM-DD HH:mm:ss）+ 金额 + 分类 + 类型 完全相同的记录视为重复
+- **保留策略**：保留最新创建的一条记录（按创建时间倒序）
+- **事务处理**：所有删除操作在一个事务中完成，保证数据一致性
+
+---
+
+## 数据类型（续）
+
+```typescript
+// 重复数据去重相关类型
+interface DuplicateRecord {
+  id: string;
+  type: 'expense' | 'income';
+  category: string;
+  amount: number;
+  date: string; // 格式: YYYY-MM-DD HH:mm:ss
+  remark: string;
+}
+
+interface DuplicateGroup {
+  key: string;
+  count: number;
+  records: DuplicateRecord[];
+  keepId: string;
+}
+
+interface DeduplicateResult {
+  scannedCount: number;
+  duplicateGroups: DuplicateGroup[];
+  totalDuplicates: number;
+  deletedCount: number;
+}
+
+interface DeduplicatePreviewResult {
+  scannedCount: number;
+  duplicateGroups: DuplicateGroup[];
+  totalDuplicates: number;
 }
 ```
 

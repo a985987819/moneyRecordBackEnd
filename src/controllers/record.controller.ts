@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import { recordService } from '../services/record.service';
 import { logger } from '../utils/logger';
-import type { RecordRequest, RecordQueryParams, ImportRecordRequest, BillFilterParams } from '../types/record';
+import type { RecordRequest, RecordQueryParams, ImportRecordRequest, BillFilterParams, RecurringRecordRequest } from '../types/record';
 
 export class RecordController {
   async getMonthlyStats(c: Context) {
@@ -226,6 +226,74 @@ export class RecordController {
     } catch (error) {
       logger.error(`删除记录失败`, error as Error, { userId: user.userId, recordId: id });
       return c.json({ error: '删除记录失败' }, 500);
+    }
+  }
+
+  // 创建定时记账记录
+  async createRecurringRecords(c: Context) {
+    const user = c.get('user');
+
+    try {
+      const body = await c.req.json<RecurringRecordRequest>();
+
+      // 参数校验
+      if (!body.type || !body.category || !body.amount || !body.startDate || !body.frequency) {
+        logger.warn(`定时记账参数错误`, { userId: user.userId, body });
+        return c.json({ error: '类型、分类、金额、开始日期和频率不能为空' }, 400);
+      }
+
+      // 校验频率值
+      const validFrequencies = ['daily', 'workday', 'weekly', 'monthly'];
+      if (!validFrequencies.includes(body.frequency)) {
+        logger.warn(`定时记账频率无效`, { userId: user.userId, frequency: body.frequency });
+        return c.json({ error: '频率必须是 daily、workday、weekly 或 monthly' }, 400);
+      }
+
+      logger.info(`创建定时记账`, { userId: user.userId, body });
+      const result = await recordService.createRecurringRecords(user.userId, body);
+
+      if (result.failed > 0) {
+        logger.warn(`定时记账部分失败`, { userId: user.userId, ...result });
+      } else {
+        logger.info(`定时记账成功`, { userId: user.userId, success: result.success });
+      }
+
+      return c.json(result, 201);
+    } catch (error) {
+      logger.error(`创建定时记账失败`, error as Error, { userId: user.userId });
+      return c.json({ error: '创建定时记账失败' }, 500);
+    }
+  }
+
+  // 预览重复记录
+  async previewDuplicates(c: Context) {
+    const user = c.get('user');
+
+    try {
+      logger.info(`预览重复记录`, { userId: user.userId });
+      const result = await recordService.findDuplicateRecords(user.userId);
+
+      logger.info(`预览重复记录完成`, { userId: user.userId, ...result });
+      return c.json(result);
+    } catch (error) {
+      logger.error(`预览重复记录失败`, error as Error, { userId: user.userId });
+      return c.json({ error: '预览重复记录失败' }, 500);
+    }
+  }
+
+  // 删除重复记录
+  async deduplicateRecords(c: Context) {
+    const user = c.get('user');
+
+    try {
+      logger.info(`删除重复记录`, { userId: user.userId });
+      const result = await recordService.deduplicateRecords(user.userId);
+
+      logger.info(`删除重复记录完成`, { userId: user.userId, deletedCount: result.deletedCount });
+      return c.json(result);
+    } catch (error) {
+      logger.error(`删除重复记录失败`, error as Error, { userId: user.userId });
+      return c.json({ error: '删除重复记录失败' }, 500);
     }
   }
 }
