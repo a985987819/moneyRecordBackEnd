@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { authRoutes } from './routes/auth.routes'
 import { categoryRoutes } from './routes/category.routes'
 import { recordRoutes } from './routes/record.routes'
+import { budgetRoutes } from './routes/budget.routes'
 import { db, initDatabase } from './config/database'
 import { logger } from './utils/logger'
 
@@ -45,6 +46,7 @@ app.get('/', (c) => {
 app.route('/api/auth', authRoutes)
 app.route('/api/categories', categoryRoutes)
 app.route('/api/records', recordRoutes)
+app.route('/api/budgets', budgetRoutes)
 
 app.get('/health', async (c) => {
   try {

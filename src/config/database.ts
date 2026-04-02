@@ -65,9 +65,24 @@ export const initDatabase = async () => {
     `)
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS budgets (
+        id SERIAL PRIMARY KEY,
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL CHECK (month >= 1 AND month <= 12),
+        amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+        spent DECIMAL(10, 2) NOT NULL DEFAULT 0,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, year, month)
+      )
+    `)
+
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_records_user_id ON records(user_id);
       CREATE INDEX IF NOT EXISTS idx_records_date ON records(date);
       CREATE INDEX IF NOT EXISTS idx_categories_user_id ON categories(user_id);
+      CREATE INDEX IF NOT EXISTS idx_budgets_user_year_month ON budgets(user_id, year, month);
     `)
 
     console.log('Database initialized successfully')

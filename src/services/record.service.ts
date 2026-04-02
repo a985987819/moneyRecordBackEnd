@@ -1,5 +1,6 @@
 import { db } from '../config/database';
 import { formatDateTime, extractDate } from '../utils/date';
+import { budgetService } from './budget.service';
 import type {
   RecordItem,
   RecordRequest,
@@ -482,7 +483,14 @@ export class RecordService {
                  amount, remark, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, account, is_import as "isImport"`,
       [data.type, data.category, data.subCategory || null, data.categoryIcon, data.amount, data.remark, formattedDate, data.account, userId]
     );
-    return result.rows[0];
+
+    const record = result.rows[0];
+
+    // 更新预算支出（如果是支出类型）
+    const date = new Date(formattedDate);
+    await budgetService.updateSpent(userId, date.getFullYear(), date.getMonth() + 1, data.amount, data.type === 'expense');
+
+    return record;
   }
 
   async batchImportRecords(userId: number, records: ImportRecordRequest[]): Promise<BatchImportResult> {
@@ -551,6 +559,12 @@ export class RecordService {
   }
 
   async updateRecord(userId: number, id: string, data: Partial<RecordRequest>): Promise<RecordItem | null> {
+    // 获取旧记录信息（用于预算调整）
+    const oldRecord = await this.getRecordById(userId, id);
+    if (!oldRecord) {
+      return null;
+    }
+
     // 如果传了日期，转换格式
     const formattedDate = data.date ? formatDateTime(data.date) : undefined;
 
@@ -570,15 +584,56 @@ export class RecordService {
                  amount, remark, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date, account, is_import as "isImport"`,
       [data.type, data.category, data.subCategory, data.categoryIcon, data.amount, data.remark, formattedDate, data.account, id, userId]
     );
-    return result.rows[0] || null;
+
+    const newRecord = result.rows[0];
+
+    // 调整预算
+    if (newRecord) {
+      const oldDate = new Date(oldRecord.date);
+      const newDate = formattedDate ? new Date(formattedDate) : oldDate;
+      const oldYear = oldDate.getFullYear();
+      const oldMonth = oldDate.getMonth() + 1;
+      const newYear = newDate.getFullYear();
+      const newMonth = newDate.getMonth() + 1;
+
+      const oldType = oldRecord.type;
+      const newType = data.type || oldType;
+      const oldAmount = oldRecord.amount;
+      const newAmount = data.amount !== undefined ? data.amount : oldAmount;
+
+      // 如果日期或金额或类型发生变化，需要调整预算
+      if (oldYear !== newYear || oldMonth !== newMonth || oldAmount !== newAmount || oldType !== newType) {
+        // 先扣除旧记录的支出
+        await budgetService.updateSpent(userId, oldYear, oldMonth, oldAmount, oldType === 'expense');
+        // 再添加新记录的支出
+        await budgetService.updateSpent(userId, newYear, newMonth, newAmount, newType === 'expense');
+      }
+    }
+
+    return newRecord;
   }
 
   async deleteRecord(userId: number, id: string): Promise<boolean> {
+    // 获取记录信息（用于预算调整）
+    const record = await this.getRecordById(userId, id);
+    if (!record) {
+      return false;
+    }
+
     const result = await db.query(
       `DELETE FROM records WHERE id = $1 AND user_id = $2 RETURNING id`,
       [id, userId]
     );
-    return result.rowCount ? result.rowCount > 0 : false;
+
+    const deleted = result.rowCount ? result.rowCount > 0 : false;
+
+    // 调整预算（删除记录，扣除支出）
+    if (deleted) {
+      const date = new Date(record.date);
+      await budgetService.updateSpent(userId, date.getFullYear(), date.getMonth() + 1, record.amount, record.type === 'expense');
+    }
+
+    return deleted;
   }
 
   async getRecordById(userId: number, id: string): Promise<RecordItem | null> {
