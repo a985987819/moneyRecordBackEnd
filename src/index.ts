@@ -4,6 +4,13 @@ import { authRoutes } from './routes/auth.routes'
 import { categoryRoutes } from './routes/category.routes'
 import { recordRoutes } from './routes/record.routes'
 import { budgetRoutes } from './routes/budget.routes'
+import { savingsRoutes } from './routes/savings.routes'
+import { recurringRoutes } from './routes/recurring.routes'
+import { debtRoutes } from './routes/debt.routes'
+import { accountRoutes } from './routes/account.routes'
+import { reminderRoutes } from './routes/reminder.routes'
+import { templateRoutes } from './routes/template.routes'
+import { syncRoutes } from './routes/sync.routes'
 import { db, initDatabase } from './config/database'
 import { logger } from './utils/logger'
 
@@ -47,6 +54,13 @@ app.route('/api/auth', authRoutes)
 app.route('/api/categories', categoryRoutes)
 app.route('/api/records', recordRoutes)
 app.route('/api/budgets', budgetRoutes)
+app.route('/api/savings', savingsRoutes)
+app.route('/api/recurring', recurringRoutes)
+app.route('/api/debts', debtRoutes)
+app.route('/api/accounts', accountRoutes)
+app.route('/api/reminders', reminderRoutes)
+app.route('/api/templates', templateRoutes)
+app.route('/api/sync', syncRoutes)
 
 app.get('/health', async (c) => {
   try {
@@ -70,6 +84,7 @@ initDatabase().then(() => {
     fetch: app.fetch,
     port,
     hostname,
+    idleTimeout: 60, // 设置超时时间为60秒
   })
 }).catch((error) => {
   logger.error(`数据库初始化失败`, error)
