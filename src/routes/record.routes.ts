@@ -12,6 +12,7 @@ recordRoutes.get('/report', (c: AuthContext) => recordController.getReport(c));
 
 // 账单筛选
 recordRoutes.get('/bills', (c: AuthContext) => recordController.getBills(c));
+recordRoutes.get('/filter', (c: AuthContext) => recordController.getBills(c)); // 兼容旧接口
 
 // 记录查询
 recordRoutes.get('/recent', (c: AuthContext) => recordController.getRecentRecords(c));
