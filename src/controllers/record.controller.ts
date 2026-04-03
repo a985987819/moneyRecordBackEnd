@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { recordService } from '../services/record.service';
 import { logger } from '../utils/logger';
 import type { RecordRequest, RecordQueryParams, ImportRecordRequest, BillFilterParams, RecurringRecordRequest } from '../types/record';
+import { safeParseInt, safeParseFloat, validateLimit } from '../utils/validation';
 
 export class RecordController {
   async getMonthlyStats(c: Context) {
@@ -52,7 +53,7 @@ export class RecordController {
   async getRecordsByDate(c: Context) {
     const user = c.get('user');
     const cursor = c.req.query('cursor');
-    const limit = parseInt(c.req.query('limit') || '10');
+    const limit = validateLimit(safeParseInt(c.req.query('limit'), 10));
 
     try {
       logger.info(`获取分页记录`, { userId: user.userId, cursor, limit });
@@ -67,8 +68,13 @@ export class RecordController {
   // 获取报表统计数据
   async getReport(c: Context) {
     const user = c.get('user');
-    const year = c.req.query('year') ? parseInt(c.req.query('year')!) : undefined;
-    const month = c.req.query('month') ? parseInt(c.req.query('month')!) : undefined;
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const month = safeParseInt(c.req.query('month'), new Date().getMonth() + 1);
+
+    if (month < 1 || month > 12) {
+      logger.warn(`获取报表参数错误`, { userId: user.userId, year, month });
+      return c.json({ error: '月份参数无效，应为1-12' }, 400);
+    }
 
     try {
       logger.info(`获取报表数据`, { userId: user.userId, year, month });
@@ -89,8 +95,8 @@ export class RecordController {
 
     const year = c.req.query('year');
     const month = c.req.query('month');
-    if (year) params.year = parseInt(year);
-    if (month) params.month = parseInt(month);
+    if (year) params.year = safeParseInt(year);
+    if (month) params.month = safeParseInt(month);
 
     params.startDate = c.req.query('startDate') || undefined;
     params.endDate = c.req.query('endDate') || undefined;
@@ -105,8 +111,8 @@ export class RecordController {
     // 金额范围
     const minAmount = c.req.query('minAmount');
     const maxAmount = c.req.query('maxAmount');
-    if (minAmount !== undefined) params.minAmount = parseFloat(minAmount);
-    if (maxAmount !== undefined) params.maxAmount = parseFloat(maxAmount);
+    if (minAmount !== undefined) params.minAmount = safeParseFloat(minAmount);
+    if (maxAmount !== undefined) params.maxAmount = safeParseFloat(maxAmount);
 
     try {
       logger.info(`获取账单列表`, { userId: user.userId, params });

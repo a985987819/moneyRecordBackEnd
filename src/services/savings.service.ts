@@ -7,6 +7,7 @@ import type {
   WithdrawRequest,
   SavingsSummary,
 } from '../types/savings';
+import { safeParseFloat, safePercentage, validateAmount } from '../utils/validation';
 
 export class SavingsService {
   // 获取所有储蓄目标
@@ -25,15 +26,13 @@ export class SavingsService {
     return result.rows.map((row) => ({
       id: row.id,
       name: row.name,
-      targetAmount: parseFloat(row.target_amount),
-      currentAmount: parseFloat(row.current_amount),
+      targetAmount: safeParseFloat(row.target_amount, 0),
+      currentAmount: safeParseFloat(row.current_amount, 0),
       deadline: row.deadline,
       icon: row.icon,
       color: row.color,
       status: row.status,
-      progress: parseFloat(row.target_amount) > 0
-        ? Math.min(100, (parseFloat(row.current_amount) / parseFloat(row.target_amount)) * 100)
-        : 0,
+      progress: safePercentage(safeParseFloat(row.current_amount, 0), safeParseFloat(row.target_amount, 0)),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
@@ -52,11 +51,14 @@ export class SavingsService {
     );
 
     const row = result.rows[0];
+    if (!row) {
+      throw new Error('储蓄目标创建失败');
+    }
     return {
       id: row.id,
       name: row.name,
-      targetAmount: parseFloat(row.target_amount),
-      currentAmount: parseFloat(row.current_amount),
+      targetAmount: safeParseFloat(row.target_amount, 0),
+      currentAmount: safeParseFloat(row.current_amount, 0),
       deadline: row.deadline,
       icon: row.icon,
       color: row.color,
@@ -97,15 +99,13 @@ export class SavingsService {
     return {
       id: row.id,
       name: row.name,
-      targetAmount: parseFloat(row.target_amount),
-      currentAmount: parseFloat(row.current_amount),
+      targetAmount: safeParseFloat(row.target_amount, 0),
+      currentAmount: safeParseFloat(row.current_amount, 0),
       deadline: row.deadline,
       icon: row.icon,
       color: row.color,
       status: row.status,
-      progress: parseFloat(row.target_amount) > 0
-        ? Math.min(100, (parseFloat(row.current_amount) / parseFloat(row.target_amount)) * 100)
-        : 0,
+      progress: safePercentage(safeParseFloat(row.current_amount, 0), safeParseFloat(row.target_amount, 0)),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -166,15 +166,13 @@ export class SavingsService {
       return {
         id: row.id,
         name: row.name,
-        targetAmount: parseFloat(row.target_amount),
-        currentAmount: parseFloat(row.current_amount),
+        targetAmount: safeParseFloat(row.target_amount, 0),
+        currentAmount: safeParseFloat(row.current_amount, 0),
         deadline: row.deadline,
         icon: row.icon,
         color: row.color,
         status: row.status,
-        progress: parseFloat(row.target_amount) > 0
-          ? Math.min(100, (parseFloat(row.current_amount) / parseFloat(row.target_amount)) * 100)
-          : 0,
+        progress: safePercentage(safeParseFloat(row.current_amount, 0), safeParseFloat(row.target_amount, 0)),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       };
@@ -244,15 +242,13 @@ export class SavingsService {
       return {
         id: row.id,
         name: row.name,
-        targetAmount: parseFloat(row.target_amount),
-        currentAmount: parseFloat(row.current_amount),
+        targetAmount: safeParseFloat(row.target_amount, 0),
+        currentAmount: safeParseFloat(row.current_amount, 0),
         deadline: row.deadline,
         icon: row.icon,
         color: row.color,
         status: row.status,
-        progress: parseFloat(row.target_amount) > 0
-          ? Math.min(100, (parseFloat(row.current_amount) / parseFloat(row.target_amount)) * 100)
-          : 0,
+        progress: safePercentage(safeParseFloat(row.current_amount, 0), safeParseFloat(row.target_amount, 0)),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       };
@@ -279,12 +275,21 @@ export class SavingsService {
     );
 
     const row = result.rows[0];
+    if (!row) {
+      return {
+        totalGoals: 0,
+        activeGoals: 0,
+        completedGoals: 0,
+        totalTarget: 0,
+        totalSaved: 0,
+      };
+    }
     return {
-      totalGoals: parseInt(row.total_goals),
-      activeGoals: parseInt(row.active_goals),
-      completedGoals: parseInt(row.completed_goals),
-      totalTarget: parseFloat(row.total_target),
-      totalSaved: parseFloat(row.total_saved),
+      totalGoals: safeParseFloat(row.total_goals, 0),
+      activeGoals: safeParseFloat(row.active_goals, 0),
+      completedGoals: safeParseFloat(row.completed_goals, 0),
+      totalTarget: safeParseFloat(row.total_target, 0),
+      totalSaved: safeParseFloat(row.total_saved, 0),
     };
   }
 }

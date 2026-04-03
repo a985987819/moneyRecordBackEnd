@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { budgetService } from '../services/budget.service';
 import { logger } from '../utils/logger';
 import type { BudgetRequest } from '../types/budget';
+import { safeParseInt, validateAmount } from '../utils/validation';
 
 export class BudgetController {
   // 获取当前月预算
@@ -32,12 +33,12 @@ export class BudgetController {
   // 获取指定月份预算
   async getBudgetByMonth(c: Context) {
     const user = c.get('user');
-    const year = parseInt(c.req.query('year') || '');
-    const month = parseInt(c.req.query('month') || '');
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const month = safeParseInt(c.req.query('month'), new Date().getMonth() + 1);
 
-    if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+    if (month < 1 || month > 12) {
       logger.warn(`获取预算参数错误`, { userId: user.userId, year, month });
-      return c.json({ error: '年份和月份参数无效' }, 400);
+      return c.json({ error: '月份参数无效，应为1-12' }, 400);
     }
 
     try {
@@ -83,12 +84,12 @@ export class BudgetController {
   // 删除预算
   async deleteBudget(c: Context) {
     const user = c.get('user');
-    const year = parseInt(c.req.query('year') || '');
-    const month = parseInt(c.req.query('month') || '');
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const month = safeParseInt(c.req.query('month'), new Date().getMonth() + 1);
 
-    if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+    if (month < 1 || month > 12) {
       logger.warn(`删除预算参数错误`, { userId: user.userId, year, month });
-      return c.json({ error: '年份和月份参数无效' }, 400);
+      return c.json({ error: '月份参数无效，应为1-12' }, 400);
     }
 
     try {
@@ -127,7 +128,12 @@ export class BudgetController {
   // 获取最近几个月预算
   async getRecentBudgets(c: Context) {
     const user = c.get('user');
-    const months = parseInt(c.req.query('months') || '6');
+    const months = safeParseInt(c.req.query('months'), 6);
+
+    if (months < 1 || months > 60) {
+      logger.warn(`获取最近预算参数错误`, { userId: user.userId, months });
+      return c.json({ error: '月份数参数无效，应为1-60' }, 400);
+    }
 
     try {
       logger.info(`获取最近预算`, { userId: user.userId, months });

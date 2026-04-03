@@ -1,5 +1,6 @@
 import { db } from '../config/database';
 import type { Debt, DebtRequest, DebtResponse, RepayRequest, DebtSummary } from '../types/debt';
+import { safeParseFloat, safePercentage } from '../utils/validation';
 
 export class DebtService {
   // 获取所有借贷记录
@@ -19,16 +20,14 @@ export class DebtService {
       id: row.id,
       type: row.type,
       personName: row.person_name,
-      amount: parseFloat(row.amount),
-      repaidAmount: parseFloat(row.repaid_amount),
-      remainingAmount: parseFloat(row.remaining_amount),
+      amount: safeParseFloat(row.amount, 0),
+      repaidAmount: safeParseFloat(row.repaid_amount, 0),
+      remainingAmount: safeParseFloat(row.remaining_amount, 0),
       date: row.date,
       expectedRepayDate: row.expected_repay_date,
       remark: row.remark,
       status: row.status,
-      progress: parseFloat(row.amount) > 0
-        ? Math.min(100, (parseFloat(row.repaid_amount) / parseFloat(row.amount)) * 100)
-        : 0,
+      progress: safePercentage(safeParseFloat(row.repaid_amount, 0), safeParseFloat(row.amount, 0)),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
@@ -57,13 +56,16 @@ export class DebtService {
     );
 
     const row = result.rows[0];
+    if (!row) {
+      throw new Error('借贷记录创建失败');
+    }
     return {
       id: row.id,
       type: row.type,
       personName: row.person_name,
-      amount: parseFloat(row.amount),
-      repaidAmount: parseFloat(row.repaid_amount),
-      remainingAmount: parseFloat(row.remaining_amount),
+      amount: safeParseFloat(row.amount, 0),
+      repaidAmount: safeParseFloat(row.repaid_amount, 0),
+      remainingAmount: safeParseFloat(row.remaining_amount, 0),
       date: row.date,
       expectedRepayDate: row.expected_repay_date,
       remark: row.remark,
@@ -115,16 +117,14 @@ export class DebtService {
       id: row.id,
       type: row.type,
       personName: row.person_name,
-      amount: parseFloat(row.amount),
-      repaidAmount: parseFloat(row.repaid_amount),
-      remainingAmount: parseFloat(row.remaining_amount),
+      amount: safeParseFloat(row.amount, 0),
+      repaidAmount: safeParseFloat(row.repaid_amount, 0),
+      remainingAmount: safeParseFloat(row.remaining_amount, 0),
       date: row.date,
       expectedRepayDate: row.expected_repay_date,
       remark: row.remark,
       status: row.status,
-      progress: parseFloat(row.amount) > 0
-        ? Math.min(100, (parseFloat(row.repaid_amount) / parseFloat(row.amount)) * 100)
-        : 0,
+      progress: safePercentage(safeParseFloat(row.repaid_amount, 0), safeParseFloat(row.amount, 0)),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -204,16 +204,14 @@ export class DebtService {
         id: row.id,
         type: row.type,
         personName: row.person_name,
-        amount: parseFloat(row.amount),
-        repaidAmount: parseFloat(row.repaid_amount),
-        remainingAmount: parseFloat(row.remaining_amount),
+        amount: safeParseFloat(row.amount, 0),
+        repaidAmount: safeParseFloat(row.repaid_amount, 0),
+        remainingAmount: safeParseFloat(row.remaining_amount, 0),
         date: row.date,
         expectedRepayDate: row.expected_repay_date,
         remark: row.remark,
         status: row.status,
-        progress: parseFloat(row.amount) > 0
-          ? Math.min(100, (parseFloat(row.repaid_amount) / parseFloat(row.amount)) * 100)
-          : 0,
+        progress: safePercentage(safeParseFloat(row.repaid_amount, 0), safeParseFloat(row.amount, 0)),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       };
@@ -241,17 +239,28 @@ export class DebtService {
     );
 
     const row = result.rows[0];
-    const totalLend = parseFloat(row.total_lend);
-    const totalBorrow = parseFloat(row.total_borrow);
+    if (!row) {
+      return {
+        totalLend: 0,
+        totalBorrow: 0,
+        netLend: 0,
+        pendingLend: 0,
+        pendingBorrow: 0,
+        repaidLend: 0,
+        repaidBorrow: 0,
+      };
+    }
+    const totalLend = safeParseFloat(row.total_lend, 0);
+    const totalBorrow = safeParseFloat(row.total_borrow, 0);
 
     return {
       totalLend,
       totalBorrow,
       netLend: totalLend - totalBorrow,
-      pendingLend: parseFloat(row.pending_lend),
-      pendingBorrow: parseFloat(row.pending_borrow),
-      repaidLend: parseFloat(row.repaid_lend),
-      repaidBorrow: parseFloat(row.repaid_borrow),
+      pendingLend: safeParseFloat(row.pending_lend, 0),
+      pendingBorrow: safeParseFloat(row.pending_borrow, 0),
+      repaidLend: safeParseFloat(row.repaid_lend, 0),
+      repaidBorrow: safeParseFloat(row.repaid_borrow, 0),
     };
   }
 }

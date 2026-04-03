@@ -6,6 +6,7 @@ import type {
   AdjustBalanceRequest,
   AccountSummary,
 } from '../types/account';
+import { safeParseFloat } from '../utils/validation';
 
 export class AccountService {
   // 获取所有账户
@@ -25,8 +26,8 @@ export class AccountService {
       name: row.name,
       type: row.type,
       icon: row.icon,
-      balance: parseFloat(row.balance),
-      initialBalance: parseFloat(row.initial_balance),
+      balance: safeParseFloat(row.balance, 0),
+      initialBalance: safeParseFloat(row.initial_balance, 0),
       isDefault: row.is_default,
       color: row.color,
       createdAt: row.created_at,
@@ -70,13 +71,16 @@ export class AccountService {
       await client.query('COMMIT');
 
       const row = result.rows[0];
+      if (!row) {
+        throw new Error('账户创建失败');
+      }
       return {
         id: row.id,
         name: row.name,
         type: row.type,
         icon: row.icon,
-        balance: parseFloat(row.balance),
-        initialBalance: parseFloat(row.initial_balance),
+        balance: safeParseFloat(row.balance, 0),
+        initialBalance: safeParseFloat(row.initial_balance, 0),
         isDefault: row.is_default,
         color: row.color,
         createdAt: row.created_at,
@@ -144,8 +148,8 @@ export class AccountService {
         name: row.name,
         type: row.type,
         icon: row.icon,
-        balance: parseFloat(row.balance),
-        initialBalance: parseFloat(row.initial_balance),
+        balance: safeParseFloat(row.balance, 0),
+        initialBalance: safeParseFloat(row.initial_balance, 0),
         isDefault: row.is_default,
         color: row.color,
         createdAt: row.created_at,
@@ -210,8 +214,8 @@ export class AccountService {
         name: row.name,
         type: row.type,
         icon: row.icon,
-        balance: parseFloat(row.balance),
-        initialBalance: parseFloat(row.initial_balance),
+        balance: safeParseFloat(row.balance, 0),
+        initialBalance: safeParseFloat(row.initial_balance, 0),
         isDefault: row.is_default,
         color: row.color,
         createdAt: row.created_at,
@@ -248,14 +252,22 @@ export class AccountService {
 
     const byType: Record<string, number> = {};
     byTypeResult.rows.forEach((row) => {
-      byType[row.type] = parseFloat(row.total);
+      byType[row.type] = safeParseFloat(row.total, 0);
     });
 
     const row = result.rows[0];
+    if (!row) {
+      return {
+        totalAssets: 0,
+        totalLiabilities: 0,
+        netWorth: 0,
+        byType,
+      };
+    }
     return {
-      totalAssets: parseFloat(row.total_assets),
-      totalLiabilities: parseFloat(row.total_liabilities),
-      netWorth: parseFloat(row.net_worth),
+      totalAssets: safeParseFloat(row.total_assets, 0),
+      totalLiabilities: safeParseFloat(row.total_liabilities, 0),
+      netWorth: safeParseFloat(row.net_worth, 0),
       byType,
     };
   }

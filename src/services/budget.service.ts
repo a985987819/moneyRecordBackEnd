@@ -1,5 +1,6 @@
 import { db } from '../config/database';
 import type { Budget, BudgetRequest, BudgetResponse, BudgetStats } from '../types/budget';
+import { safeParseFloat, safePercentage } from '../utils/validation';
 
 export class BudgetService {
   // 获取指定月份的预算
@@ -22,10 +23,10 @@ export class BudgetService {
       id: row.id,
       year: row.year,
       month: row.month,
-      amount: parseFloat(row.amount),
-      spent: parseFloat(row.spent),
-      remaining: parseFloat(row.remaining),
-      percentage: parseFloat(row.percentage),
+      amount: safeParseFloat(row.amount, 0),
+      spent: safeParseFloat(row.spent, 0),
+      remaining: safeParseFloat(row.remaining, 0),
+      percentage: safePercentage(safeParseFloat(row.spent, 0), safeParseFloat(row.amount, 0)),
     };
   }
 
@@ -66,14 +67,17 @@ export class BudgetService {
     }
 
     const row = result.rows[0];
+    if (!row) {
+      throw new Error('预算创建失败');
+    }
     return {
       id: row.id,
       year: row.year,
       month: row.month,
-      amount: parseFloat(row.amount),
-      spent: parseFloat(row.spent),
-      remaining: parseFloat(row.remaining),
-      percentage: parseFloat(row.percentage),
+      amount: safeParseFloat(row.amount, 0),
+      spent: safeParseFloat(row.spent, 0),
+      remaining: safeParseFloat(row.remaining, 0),
+      percentage: safePercentage(safeParseFloat(row.spent, 0), safeParseFloat(row.amount, 0)),
     };
   }
 

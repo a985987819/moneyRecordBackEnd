@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { syncService } from '../services/sync.service';
 import { logger } from '../utils/logger';
 import type { SyncData } from '../types/sync';
+import { safeParseInt } from '../utils/validation';
 
 export class SyncController {
   // 上传数据
@@ -31,13 +32,16 @@ export class SyncController {
   async downloadData(c: Context) {
     const user = c.get('user');
     const version = c.req.query('version');
+    const versionNum = version ? safeParseInt(version, undefined as any) : undefined;
+
+    if (version && versionNum === undefined) {
+      logger.warn(`下载数据参数错误`, { userId: user.userId, version });
+      return c.json({ error: '版本号参数无效' }, 400);
+    }
 
     try {
-      logger.info(`下载同步数据`, { userId: user.userId, version });
-      const result = await syncService.downloadData(
-        user.userId,
-        version ? parseInt(version) : undefined
-      );
+      logger.info(`下载同步数据`, { userId: user.userId, version: versionNum });
+      const result = await syncService.downloadData(user.userId, versionNum);
 
       logger.info(`数据下载成功`, { userId: user.userId, version: result.version });
       return c.json(result);
