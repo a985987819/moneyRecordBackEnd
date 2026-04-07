@@ -1,7 +1,6 @@
 import { db } from '../config/database';
 import { formatDateTime } from '../utils/date';
 import type {
-  RecordTemplate,
   TemplateRequest,
   TemplateResponse,
   UseTemplateRequest,

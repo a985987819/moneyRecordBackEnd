@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { recordController } from '../controllers/record.controller';
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
 
 const recordRoutes = new Hono();
 
+// 所有记账接口都需要认证
 recordRoutes.use('*', authMiddleware);
 
 // 统计相关

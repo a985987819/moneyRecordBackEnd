@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { accountController } from '../controllers/account.controller';
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
 
 const accountRoutes = new Hono();
 
+// 所有账户接口都需要认证
 accountRoutes.use('*', authMiddleware);
 
 // 获取所有账户

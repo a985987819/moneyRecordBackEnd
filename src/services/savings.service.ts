@@ -1,13 +1,12 @@
 import { db } from '../config/database';
 import type {
-  SavingsGoal,
   SavingsGoalRequest,
   SavingsGoalResponse,
   DepositRequest,
   WithdrawRequest,
   SavingsSummary,
 } from '../types/savings';
-import { safeParseFloat, safePercentage, validateAmount } from '../utils/validation';
+import { safeParseFloat, safePercentage } from '../utils/validation';
 
 export class SavingsService {
   // 获取所有储蓄目标

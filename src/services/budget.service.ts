@@ -1,5 +1,5 @@
 import { db } from '../config/database';
-import type { Budget, BudgetRequest, BudgetResponse, BudgetStats } from '../types/budget';
+import type { BudgetRequest, BudgetResponse, BudgetStats } from '../types/budget';
 import { safeParseFloat, safePercentage } from '../utils/validation';
 
 export class BudgetService {

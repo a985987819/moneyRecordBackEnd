@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { templateController } from '../controllers/template.controller';
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 
 const templateRoutes = new Hono();
 
+// 所有模板接口都需要认证
 templateRoutes.use('*', authMiddleware);
 
 // 获取所有模板
@@ -22,3 +24,4 @@ templateRoutes.delete('/:id', (c: AuthContext) => templateController.deleteTempl
 templateRoutes.post('/:id/use', (c: AuthContext) => templateController.useTemplate(c));
 
 export { templateRoutes };
+

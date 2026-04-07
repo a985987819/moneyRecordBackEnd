@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { categoryController } from '../controllers/category.controller';
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
 
 const categoryRoutes = new Hono();
 
+// 所有分类接口都需要认证
 categoryRoutes.use('*', authMiddleware);
 
 categoryRoutes.get('/expense', (c: AuthContext) => categoryController.getExpenseCategories(c));

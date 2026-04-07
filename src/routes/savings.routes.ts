@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { savingsController } from '../controllers/savings.controller';
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
 
 const savingsRoutes = new Hono();
 
+// 所有储蓄接口都需要认证
 savingsRoutes.use('*', authMiddleware);
 
 // 获取所有储蓄目标

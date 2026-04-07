@@ -13,7 +13,7 @@ export function generateAccessToken(payload: Omit<TokenPayload, 'type'>): string
   return jwt.sign(
     { ...payload, type: 'access' },
     env.JWT_SECRET,
-    { expiresIn: env.JWT_EXPIRES_IN }
+    { expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] }
   )
 }
 

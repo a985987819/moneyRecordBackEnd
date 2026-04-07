@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { budgetController } from '../controllers/budget.controller';
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
 
 const budgetRoutes = new Hono();
 
+// 所有预算接口都需要认证
 budgetRoutes.use('*', authMiddleware);
 
 // 获取当前月预算

@@ -1,5 +1,5 @@
 import { db } from '../config/database';
-import type { Reminder, ReminderRequest, ReminderResponse } from '../types/reminder';
+import type { ReminderRequest, ReminderResponse } from '../types/reminder';
 
 export class ReminderService {
   // 获取所有提醒

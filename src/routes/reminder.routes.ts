@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { reminderController } from '../controllers/reminder.controller';
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 
 const reminderRoutes = new Hono();
 
+// 所有提醒接口都需要认证
 reminderRoutes.use('*', authMiddleware);
 
 // 获取所有提醒
@@ -22,3 +24,4 @@ reminderRoutes.delete('/:id', (c: AuthContext) => reminderController.deleteRemin
 reminderRoutes.post('/:id/toggle', (c: AuthContext) => reminderController.toggleReminder(c));
 
 export { reminderRoutes };
+

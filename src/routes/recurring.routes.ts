@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { recurringController } from '../controllers/recurring.controller';
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
 
 const recurringRoutes = new Hono();
 
+// 所有周期记账接口都需要认证
 recurringRoutes.use('*', authMiddleware);
 
 // 获取所有周期记账

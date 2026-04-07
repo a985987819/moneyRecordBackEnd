@@ -1,5 +1,5 @@
 import { db } from '../config/database';
-import type { Debt, DebtRequest, DebtResponse, RepayRequest, DebtSummary } from '../types/debt';
+import type { DebtRequest, DebtResponse, RepayRequest, DebtSummary } from '../types/debt';
 import { safeParseFloat, safePercentage } from '../utils/validation';
 
 export class DebtService {

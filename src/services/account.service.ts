@@ -1,6 +1,5 @@
 import { db } from '../config/database';
 import type {
-  Account,
   AccountRequest,
   AccountResponse,
   AdjustBalanceRequest,

@@ -1,14 +1,17 @@
 import { Hono } from 'hono'
 import { authController } from '../controllers/auth.controller'
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware'
+import type { AuthContext } from '../middleware/auth.middleware'
+import { authMiddleware } from '../middleware/auth.middleware'
 
 const authRoutes = new Hono()
 
-authRoutes.post('/register', authController.register)
-authRoutes.post('/login', authController.login)
-authRoutes.post('/refresh', authController.refreshToken)
-authRoutes.post('/logout', authController.logout)
+// 公开接口 - 统一使用箭头函数包装
+authRoutes.post('/register', (c) => authController.register(c))
+authRoutes.post('/login', (c) => authController.login(c))
+authRoutes.post('/refresh', (c) => authController.refreshToken(c))
+authRoutes.post('/logout', (c) => authController.logout(c))
 
+// 需要认证的接口 - 统一使用箭头函数包装
 authRoutes.use('/logout-all', authMiddleware)
 authRoutes.post('/logout-all', (c: AuthContext) => authController.logoutAll(c))
 

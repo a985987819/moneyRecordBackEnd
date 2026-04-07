@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { debtController } from '../controllers/debt.controller';
-import { authMiddleware, type AuthContext } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
 
 const debtRoutes = new Hono();
 
+// 所有借贷接口都需要认证
 debtRoutes.use('*', authMiddleware);
 
 // 获取所有借贷记录
