@@ -1,8 +1,27 @@
 import { db } from '../config/database';
-import type { DebtRequest, DebtResponse, RepayRequest, DebtSummary } from '../types/debt';
-import { safeParseFloat, safePercentage } from '../utils/validation';
+import type { DebtRequest, DebtResponse, DebtSummary, RepayRequest } from '../types/debt';
+import { BaseService } from '../utils/base.service';
 
-export class DebtService {
+export class DebtService extends BaseService {
+  private mapToResponse(row: Record<string, any>): DebtResponse {
+    const amount = this.getFloat(row, 'amount', 0);
+    const repaidAmount = this.getFloat(row, 'repaid_amount', 0);
+    return {
+      id: row.id,
+      type: row.type,
+      personName: row.person_name,
+      amount,
+      repaidAmount,
+      remainingAmount: this.getFloat(row, 'remaining_amount', 0),
+      date: row.date,
+      expectedRepayDate: row.expected_repay_date,
+      remark: row.remark,
+      status: row.status,
+      progress: amount > 0 ? (repaidAmount / amount) * 100 : 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
   // 获取所有借贷记录
   async getAllDebts(userId: number): Promise<DebtResponse[]> {
     const result = await db.query(
@@ -16,21 +35,7 @@ export class DebtService {
       [userId]
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      personName: row.person_name,
-      amount: safeParseFloat(row.amount, 0),
-      repaidAmount: safeParseFloat(row.repaid_amount, 0),
-      remainingAmount: safeParseFloat(row.remaining_amount, 0),
-      date: row.date,
-      expectedRepayDate: row.expected_repay_date,
-      remark: row.remark,
-      status: row.status,
-      progress: safePercentage(safeParseFloat(row.repaid_amount, 0), safeParseFloat(row.amount, 0)),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    return result.rows.map((row) => this.mapToResponse(row));
   }
 
   // 创建借贷记录
@@ -59,21 +64,7 @@ export class DebtService {
     if (!row) {
       throw new Error('借贷记录创建失败');
     }
-    return {
-      id: row.id,
-      type: row.type,
-      personName: row.person_name,
-      amount: safeParseFloat(row.amount, 0),
-      repaidAmount: safeParseFloat(row.repaid_amount, 0),
-      remainingAmount: safeParseFloat(row.remaining_amount, 0),
-      date: row.date,
-      expectedRepayDate: row.expected_repay_date,
-      remark: row.remark,
-      status: row.status,
-      progress: 0,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(row);
   }
 
   // 更新借贷记录
@@ -112,22 +103,7 @@ export class DebtService {
       return null;
     }
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      type: row.type,
-      personName: row.person_name,
-      amount: safeParseFloat(row.amount, 0),
-      repaidAmount: safeParseFloat(row.repaid_amount, 0),
-      remainingAmount: safeParseFloat(row.remaining_amount, 0),
-      date: row.date,
-      expectedRepayDate: row.expected_repay_date,
-      remark: row.remark,
-      status: row.status,
-      progress: safePercentage(safeParseFloat(row.repaid_amount, 0), safeParseFloat(row.amount, 0)),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 
   // 删除借贷记录
@@ -200,21 +176,7 @@ export class DebtService {
       await client.query('COMMIT');
 
       const row = result.rows[0];
-      return {
-        id: row.id,
-        type: row.type,
-        personName: row.person_name,
-        amount: safeParseFloat(row.amount, 0),
-        repaidAmount: safeParseFloat(row.repaid_amount, 0),
-        remainingAmount: safeParseFloat(row.remaining_amount, 0),
-        date: row.date,
-        expectedRepayDate: row.expected_repay_date,
-        remark: row.remark,
-        status: row.status,
-        progress: safePercentage(safeParseFloat(row.repaid_amount, 0), safeParseFloat(row.amount, 0)),
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      };
+      return this.mapToResponse(row);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -250,17 +212,17 @@ export class DebtService {
         repaidBorrow: 0,
       };
     }
-    const totalLend = safeParseFloat(row.total_lend, 0);
-    const totalBorrow = safeParseFloat(row.total_borrow, 0);
+    const totalLend = this.getFloat(row, 'total_lend', 0);
+    const totalBorrow = this.getFloat(row, 'total_borrow', 0);
 
     return {
       totalLend,
       totalBorrow,
       netLend: totalLend - totalBorrow,
-      pendingLend: safeParseFloat(row.pending_lend, 0),
-      pendingBorrow: safeParseFloat(row.pending_borrow, 0),
-      repaidLend: safeParseFloat(row.repaid_lend, 0),
-      repaidBorrow: safeParseFloat(row.repaid_borrow, 0),
+      pendingLend: this.getFloat(row, 'pending_lend', 0),
+      pendingBorrow: this.getFloat(row, 'pending_borrow', 0),
+      repaidLend: this.getFloat(row, 'repaid_lend', 0),
+      repaidBorrow: this.getFloat(row, 'repaid_borrow', 0),
     };
   }
 }

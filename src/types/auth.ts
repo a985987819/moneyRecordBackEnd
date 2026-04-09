@@ -63,7 +63,7 @@ export interface RefreshTokenResponse {
 /**
  * 认证错误码
  */
-export type AuthErrorCode =
+export type AuthErrorCode = 
   | 'INVALID_CREDENTIALS'
   | 'USER_NOT_FOUND'
   | 'USERNAME_EXISTS'

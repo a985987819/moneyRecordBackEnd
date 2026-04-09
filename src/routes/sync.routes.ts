@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { syncController } from '../controllers/sync.controller';
-import type { AuthContext } from '../middleware/auth.middleware';
 import { authMiddleware } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
 
 const syncRoutes = new Hono();
 
@@ -21,4 +21,3 @@ syncRoutes.get('/versions', (c: AuthContext) => syncController.getVersions(c));
 syncRoutes.post('/restore/:versionId', (c: AuthContext) => syncController.restoreVersion(c));
 
 export { syncRoutes };
-

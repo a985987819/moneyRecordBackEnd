@@ -1,14 +1,31 @@
 import { db } from '../config/database';
 import type {
+  DepositRequest,
   SavingsGoalRequest,
   SavingsGoalResponse,
-  DepositRequest,
-  WithdrawRequest,
   SavingsSummary,
+  WithdrawRequest,
 } from '../types/savings';
-import { safeParseFloat, safePercentage } from '../utils/validation';
+import { BaseService } from '../utils/base.service';
 
-export class SavingsService {
+export class SavingsService extends BaseService {
+  private mapToResponse(row: Record<string, any>): SavingsGoalResponse {
+    const targetAmount = this.getFloat(row, 'target_amount', 0);
+    const currentAmount = this.getFloat(row, 'current_amount', 0);
+    return {
+      id: row.id,
+      name: row.name,
+      targetAmount,
+      currentAmount,
+      deadline: row.deadline,
+      icon: row.icon,
+      color: row.color,
+      status: row.status,
+      progress: targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
   // 获取所有储蓄目标
   async getAllGoals(userId: number): Promise<SavingsGoalResponse[]> {
     const result = await db.query(
@@ -22,19 +39,7 @@ export class SavingsService {
       [userId]
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      targetAmount: safeParseFloat(row.target_amount, 0),
-      currentAmount: safeParseFloat(row.current_amount, 0),
-      deadline: row.deadline,
-      icon: row.icon,
-      color: row.color,
-      status: row.status,
-      progress: safePercentage(safeParseFloat(row.current_amount, 0), safeParseFloat(row.target_amount, 0)),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    return result.rows.map((row) => this.mapToResponse(row));
   }
 
   // 创建储蓄目标
@@ -53,19 +58,7 @@ export class SavingsService {
     if (!row) {
       throw new Error('储蓄目标创建失败');
     }
-    return {
-      id: row.id,
-      name: row.name,
-      targetAmount: safeParseFloat(row.target_amount, 0),
-      currentAmount: safeParseFloat(row.current_amount, 0),
-      deadline: row.deadline,
-      icon: row.icon,
-      color: row.color,
-      status: row.status,
-      progress: 0,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(row);
   }
 
   // 更新储蓄目标
@@ -94,20 +87,7 @@ export class SavingsService {
       return null;
     }
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      name: row.name,
-      targetAmount: safeParseFloat(row.target_amount, 0),
-      currentAmount: safeParseFloat(row.current_amount, 0),
-      deadline: row.deadline,
-      icon: row.icon,
-      color: row.color,
-      status: row.status,
-      progress: safePercentage(safeParseFloat(row.current_amount, 0), safeParseFloat(row.target_amount, 0)),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 
   // 删除储蓄目标
@@ -162,19 +142,7 @@ export class SavingsService {
       await client.query('COMMIT');
 
       const row = result.rows[0];
-      return {
-        id: row.id,
-        name: row.name,
-        targetAmount: safeParseFloat(row.target_amount, 0),
-        currentAmount: safeParseFloat(row.current_amount, 0),
-        deadline: row.deadline,
-        icon: row.icon,
-        color: row.color,
-        status: row.status,
-        progress: safePercentage(safeParseFloat(row.current_amount, 0), safeParseFloat(row.target_amount, 0)),
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      };
+      return this.mapToResponse(row);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -205,7 +173,7 @@ export class SavingsService {
         return null;
       }
 
-      const currentAmount = parseFloat(checkResult.rows[0].current_amount);
+      const currentAmount = this.getFloat(checkResult.rows[0], 'current_amount');
       if (currentAmount < data.amount) {
         await client.query('ROLLBACK');
         throw new Error('余额不足');
@@ -238,19 +206,7 @@ export class SavingsService {
       await client.query('COMMIT');
 
       const row = result.rows[0];
-      return {
-        id: row.id,
-        name: row.name,
-        targetAmount: safeParseFloat(row.target_amount, 0),
-        currentAmount: safeParseFloat(row.current_amount, 0),
-        deadline: row.deadline,
-        icon: row.icon,
-        color: row.color,
-        status: row.status,
-        progress: safePercentage(safeParseFloat(row.current_amount, 0), safeParseFloat(row.target_amount, 0)),
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      };
+      return this.mapToResponse(row);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -284,11 +240,11 @@ export class SavingsService {
       };
     }
     return {
-      totalGoals: safeParseFloat(row.total_goals, 0),
-      activeGoals: safeParseFloat(row.active_goals, 0),
-      completedGoals: safeParseFloat(row.completed_goals, 0),
-      totalTarget: safeParseFloat(row.total_target, 0),
-      totalSaved: safeParseFloat(row.total_saved, 0),
+      totalGoals: this.getInt(row, 'total_goals'),
+      activeGoals: this.getInt(row, 'active_goals'),
+      completedGoals: this.getInt(row, 'completed_goals'),
+      totalTarget: this.getFloat(row, 'total_target'),
+      totalSaved: this.getFloat(row, 'total_saved'),
     };
   }
 }

@@ -1,53 +1,14 @@
 /**
  * 输入验证和类型安全工具
+ * 注意：safeParseInt 和 safeParseFloat 已移至 base.service.ts 中的 BaseService
  */
-
-/**
- * 安全解析整数
- * @param value 输入值
- * @param defaultValue 默认值
- * @returns 解析后的整数
- */
-export function safeParseInt(value: string | undefined | null, defaultValue: number = 0): number {
-  if (value === undefined || value === null || value === '') {
-    return defaultValue;
-  }
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
-}
-
-/**
- * 安全解析浮点数
- * @param value 输入值
- * @param defaultValue 默认值
- * @returns 解析后的浮点数
- */
-export function safeParseFloat(value: string | number | undefined | null, defaultValue: number = 0): number {
-  if (value === undefined || value === null || value === '') {
-    return defaultValue;
-  }
-  const parsed = typeof value === 'string' ? parseFloat(value) : value;
-  return isNaN(parsed) ? defaultValue : parsed;
-}
-
-/**
- * 安全获取数组第一个元素
- * @param array 数组
- * @returns 第一个元素或null
- */
-export function safeFirst<T>(array: T[]): T | null {
-  if (!array || array.length === 0) {
-    return null;
-  }
-  return array[0];
-}
 
 /**
  * 验证金额
  * @param amount 金额
  * @param min 最小值（默认0）
  * @param max 最大值（默认99999999.99）
- * @returns 验证后的金额
+ * @returns 验证后的金额（保留2位小数）
  */
 export function validateAmount(amount: number, min: number = 0, max: number = 99999999.99): number {
   if (isNaN(amount)) {
@@ -141,7 +102,7 @@ export function validateEnum<T>(value: T, allowedValues: T[], fieldName: string)
 }
 
 /**
- * 安全计算百分比
+ * 安全计算百分比（BaseService中已有calculatePercentage方法，此处保留独立版本供非Service类使用）
  * @param value 当前值
  * @param total 总值
  * @returns 百分比（0-100）
@@ -154,15 +115,4 @@ export function safePercentage(value: number, total: number): number {
   return Math.min(100, Math.max(0, percentage));
 }
 
-/**
- * 验证分页参数
- * @param limit 每页数量
- * @param maxLimit 最大每页数量
- * @returns 验证后的limit
- */
-export function validateLimit(limit: number, maxLimit: number = 100): number {
-  if (isNaN(limit) || limit < 1) {
-    return 10;
-  }
-  return Math.min(limit, maxLimit);
-}
+

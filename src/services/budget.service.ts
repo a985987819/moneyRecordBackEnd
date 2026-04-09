@@ -1,8 +1,8 @@
 import { db } from '../config/database';
+import { BaseService } from '../utils/base.service';
 import type { BudgetRequest, BudgetResponse, BudgetStats } from '../types/budget';
-import { safeParseFloat, safePercentage } from '../utils/validation';
 
-export class BudgetService {
+export class BudgetService extends BaseService {
   // 获取指定月份的预算
   async getBudget(userId: number, year: number, month: number): Promise<BudgetResponse | null> {
     const result = await db.query(
@@ -23,10 +23,10 @@ export class BudgetService {
       id: row.id,
       year: row.year,
       month: row.month,
-      amount: safeParseFloat(row.amount, 0),
-      spent: safeParseFloat(row.spent, 0),
-      remaining: safeParseFloat(row.remaining, 0),
-      percentage: safePercentage(safeParseFloat(row.spent, 0), safeParseFloat(row.amount, 0)),
+      amount: this.getFloat(row, 'amount'),
+      spent: this.getFloat(row, 'spent'),
+      remaining: this.getFloat(row, 'remaining'),
+      percentage: this.calculatePercentage(this.getFloat(row, 'spent'), this.getFloat(row, 'amount')),
     };
   }
 
@@ -74,10 +74,10 @@ export class BudgetService {
       id: row.id,
       year: row.year,
       month: row.month,
-      amount: safeParseFloat(row.amount, 0),
-      spent: safeParseFloat(row.spent, 0),
-      remaining: safeParseFloat(row.remaining, 0),
-      percentage: safePercentage(safeParseFloat(row.spent, 0), safeParseFloat(row.amount, 0)),
+      amount: this.getFloat(row, 'amount'),
+      spent: this.getFloat(row, 'spent'),
+      remaining: this.getFloat(row, 'remaining'),
+      percentage: this.calculatePercentage(this.getFloat(row, 'spent'), this.getFloat(row, 'amount')),
     };
   }
 
@@ -151,27 +151,33 @@ export class BudgetService {
     return {
       currentMonth: currentMonthBudget,
       lastMonth: lastMonthBudget,
-      averageSpent: parseFloat(avgResult.rows[0]?.average_spent || 0),
+      averageSpent: this.getFloat(avgResult.rows[0], 'average_spent'),
     };
   }
 
-  // 获取最近几个月的预算列表
+  // 获取最近几个月的预算列表（单查询优化）
   async getRecentBudgets(userId: number, months: number = 6): Promise<BudgetResponse[]> {
     const now = new Date();
-    const budgets: BudgetResponse[] = [];
-
+    const conditions: string[] = [];
+    const params: any[] = [userId];
     for (let i = 0; i < months; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const year = date.getFullYear();
       const month = date.getMonth() + 1;
-
-      const budget = await this.getBudget(userId, year, month);
-      if (budget) {
-        budgets.push(budget);
-      }
+      conditions.push(`($${params.length + 1}, $${params.length + 2})`);
+      params.push(year, month);
     }
 
-    return budgets;
+    const result = await db.query(
+      `SELECT id::text, year, month, amount, spent,
+              (amount - spent) as remaining,
+              CASE WHEN amount > 0 THEN (spent / amount * 100) ELSE 0 END as percentage
+       FROM budgets
+       WHERE user_id = $1 AND (year, month) IN (${conditions.join(', ')})`,
+      params
+    );
+
+    return result.rows.map((row) => this.mapToResponse(row));
   }
 }
 

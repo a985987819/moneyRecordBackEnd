@@ -2,7 +2,8 @@ import type { AuthContext } from '../middleware/auth.middleware'
 import { budgetService } from '../services/budget.service'
 import type { BudgetRequest } from '../types/budget'
 import { logger } from '../utils/logger'
-import { safeParseInt, validateAmount } from '../utils/validation'
+import { safeParseInt } from '../utils/base.service'
+import { validateAmount } from '../utils/validation'
 
 export class BudgetController {
   // 获取当前月预算

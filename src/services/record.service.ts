@@ -15,15 +15,16 @@ import type {
   RecordQueryParams,
   RecordRequest,
   RecordsByDate,
-  RecurringFrequency,
+  RecurrenceFrequency,
   RecurringRecordRequest,
   RecurringRecordResult,
-  ReportData
+  ReportData,
 } from '../types/record';
+import { BaseService } from '../utils/base.service';
 import { extractDate, formatDateTime } from '../utils/date';
 import { budgetService } from './budget.service';
 
-export class RecordService {
+export class RecordService extends BaseService {
   async getMonthlyStats(userId: number, month?: string): Promise<MonthlyStats> {
     const targetMonth = month || new Date().toISOString().slice(0, 7);
 
@@ -39,8 +40,8 @@ export class RecordService {
     const { total_expense, total_income } = result.rows[0];
 
     return {
-      totalExpense: parseFloat(total_expense),
-      totalIncome: parseFloat(total_income),
+      totalExpense: this.getFloat(result.rows[0], 'total_expense'),
+      totalIncome: this.getFloat(result.rows[0], 'total_income'),
       budget: 5000,
     };
   }
@@ -219,10 +220,10 @@ export class RecordService {
 
     // 计算总支出和总收入
     const totalExpense = expenseCategoryResult.rows.reduce(
-      (sum, row) => sum + parseFloat(row.amount), 0
+      (sum, row) => sum + this.getFloat(row, 'amount'), 0
     );
     const totalIncome = incomeCategoryResult.rows.reduce(
-      (sum, row) => sum + parseFloat(row.amount), 0
+      (sum, row) => sum + this.getFloat(row, 'amount'), 0
     );
 
     // 构建分类统计数据（包含百分比）
@@ -230,18 +231,18 @@ export class RecordService {
       category: row.category,
       categoryIcon: row.categoryIcon,
       type: 'expense',
-      amount: parseFloat(row.amount),
-      percentage: totalExpense > 0 ? parseFloat(((parseFloat(row.amount) / totalExpense) * 100).toFixed(2)) : 0,
-      count: parseInt(row.count),
+      amount: this.getFloat(row, 'amount'),
+      percentage: totalExpense > 0 ? parseFloat(((this.getFloat(row, 'amount') / totalExpense) * 100).toFixed(2)) : 0,
+      count: this.getInt(row, 'count'),
     }));
 
     const incomeCategoryStats: CategoryStats[] = incomeCategoryResult.rows.map(row => ({
       category: row.category,
       categoryIcon: row.categoryIcon,
       type: 'income',
-      amount: parseFloat(row.amount),
-      percentage: totalIncome > 0 ? parseFloat(((parseFloat(row.amount) / totalIncome) * 100).toFixed(2)) : 0,
-      count: parseInt(row.count),
+      amount: this.getFloat(row, 'amount'),
+      percentage: totalIncome > 0 ? parseFloat(((this.getFloat(row, 'amount') / totalIncome) * 100).toFixed(2)) : 0,
+      count: this.getInt(row, 'count'),
     }));
 
     return {
@@ -337,10 +338,10 @@ export class RecordService {
     // 计算汇总数据
     const totalExpense = records
       .filter(r => r.type === 'expense')
-      .reduce((sum, r) => sum + parseFloat(r.amount), 0);
+      .reduce((sum, r) => sum + this.getFloat(r, 'amount'), 0);
     const totalIncome = records
       .filter(r => r.type === 'income')
-      .reduce((sum, r) => sum + parseFloat(r.amount), 0);
+      .reduce((sum, r) => sum + this.getFloat(r, 'amount'), 0);
 
     return {
       summary: {
@@ -674,7 +675,7 @@ export class RecordService {
         id: record.id,
         type: record.type,
         category: record.category,
-        amount: parseFloat(record.amount),
+        amount: this.getFloat(record, 'amount'),
         date: record.date,
         remark: record.remark,
       });

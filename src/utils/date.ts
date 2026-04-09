@@ -54,23 +54,3 @@ export function extractDate(dateTimeStr: string): string {
   return dateTimeStr.split(' ')[0];
 }
 
-/**
- * 从完整日期时间中提取时间部分 (HH:mm:ss)
- */
-export function extractTime(dateTimeStr: string): string {
-  return dateTimeStr.split(' ')[1] || '00:00:00';
-}
-
-/**
- * 获取当前时间的 YYYY-MM-DD HH:mm:ss 格式
- */
-export function getCurrentDateTime(): string {
-  return formatDateTime(Date.now());
-}
-
-/**
- * 获取当前日期的 YYYY-MM-DD 格式
- */
-export function getCurrentDate(): string {
-  return extractDate(getCurrentDateTime());
-}

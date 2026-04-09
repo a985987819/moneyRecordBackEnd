@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { templateController } from '../controllers/template.controller';
-import type { AuthContext } from '../middleware/auth.middleware';
 import { authMiddleware } from '../middleware/auth.middleware';
+import type { AuthContext } from '../middleware/auth.middleware';
 
 const templateRoutes = new Hono();
 
@@ -24,4 +24,3 @@ templateRoutes.delete('/:id', (c: AuthContext) => templateController.deleteTempl
 templateRoutes.post('/:id/use', (c: AuthContext) => templateController.useTemplate(c));
 
 export { templateRoutes };
-

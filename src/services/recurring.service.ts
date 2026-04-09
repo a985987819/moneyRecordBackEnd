@@ -4,24 +4,40 @@ import type {
   RecurringRecordResponse,
   RecurringSummary,
 } from '../types/recurring';
+import { BaseService } from '../utils/base.service';
 
-export class RecurringService {
+export class RecurringService extends BaseService {
+  private mapToResponse(row: Record<string, any>): RecurringRecordResponse {
+    return this.mapRowToResponse<RecurringRecordResponse>(
+      row,
+      {
+        id: row.id,
+        type: row.type,
+        category: row.category,
+        subCategory: row.sub_category,
+        categoryIcon: row.category_icon,
+        amount: this.getFloat(row, 'amount'),
+        remark: row.remark,
+        frequency: row.frequency,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        nextExecuteDate: row.next_execute_date,
+        account: row.account,
+        isActive: row.is_active,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }
+    );
+  }
+
   // 计算下一次执行日期
   private calculateNextDate(date: Date, frequency: string): Date {
     const next = new Date(date);
     switch (frequency) {
-      case 'daily':
-        next.setDate(next.getDate() + 1);
-        break;
-      case 'weekly':
-        next.setDate(next.getDate() + 7);
-        break;
-      case 'monthly':
-        next.setMonth(next.getMonth() + 1);
-        break;
-      case 'yearly':
-        next.setFullYear(next.getFullYear() + 1);
-        break;
+      case 'daily': next.setDate(next.getDate() + 1); break;
+      case 'weekly': next.setDate(next.getDate() + 7); break;
+      case 'monthly': next.setMonth(next.getMonth() + 1); break;
+      case 'yearly': next.setFullYear(next.getFullYear() + 1); break;
     }
     return next;
   }
@@ -39,23 +55,7 @@ export class RecurringService {
       [userId]
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      category: row.category,
-      subCategory: row.sub_category,
-      categoryIcon: row.category_icon,
-      amount: parseFloat(row.amount),
-      remark: row.remark,
-      frequency: row.frequency,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      nextExecuteDate: row.next_execute_date,
-      account: row.account,
-      isActive: row.is_active,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    return result.rows.map((row) => this.mapToResponse(row));
   }
 
   // 创建周期记账
@@ -90,24 +90,7 @@ export class RecurringService {
       ]
     );
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      type: row.type,
-      category: row.category,
-      subCategory: row.sub_category,
-      categoryIcon: row.category_icon,
-      amount: parseFloat(row.amount),
-      remark: row.remark,
-      frequency: row.frequency,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      nextExecuteDate: row.next_execute_date,
-      account: row.account,
-      isActive: row.is_active,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 
   // 更新周期记账
@@ -172,24 +155,7 @@ export class RecurringService {
       return null;
     }
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      type: row.type,
-      category: row.category,
-      subCategory: row.sub_category,
-      categoryIcon: row.category_icon,
-      amount: parseFloat(row.amount),
-      remark: row.remark,
-      frequency: row.frequency,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      nextExecuteDate: row.next_execute_date,
-      account: row.account,
-      isActive: row.is_active,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 
   // 删除周期记账
@@ -219,24 +185,7 @@ export class RecurringService {
       return null;
     }
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      type: row.type,
-      category: row.category,
-      subCategory: row.sub_category,
-      categoryIcon: row.category_icon,
-      amount: parseFloat(row.amount),
-      remark: row.remark,
-      frequency: row.frequency,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      nextExecuteDate: row.next_execute_date,
-      account: row.account,
-      isActive: row.is_active,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 
   // 获取统计
@@ -253,9 +202,9 @@ export class RecurringService {
 
     const row = result.rows[0];
     return {
-      totalActive: parseInt(row.total_active),
-      totalInactive: parseInt(row.total_inactive),
-      monthlyTotal: parseFloat(row.monthly_total),
+      totalActive: this.getInt(row, 'total_active'),
+      totalInactive: this.getInt(row, 'total_inactive'),
+      monthlyTotal: this.getFloat(row, 'monthly_total'),
     };
   }
 }

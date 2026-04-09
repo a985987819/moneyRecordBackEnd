@@ -1,7 +1,24 @@
 import { db } from '../config/database';
 import type { ReminderRequest, ReminderResponse } from '../types/reminder';
+import { BaseService } from '../utils/base.service';
 
-export class ReminderService {
+export class ReminderService extends BaseService {
+  private mapToResponse(row: Record<string, any>): ReminderResponse {
+    return this.mapRowToResponse<ReminderResponse>(
+      row,
+      {
+        id: row.id,
+        type: row.type,
+        time: row.time,
+        message: row.message,
+        isEnabled: row.is_enabled,
+        daysOfWeek: row.days_of_week,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }
+    );
+  }
+
   // 获取所有提醒
   async getAllReminders(userId: number): Promise<ReminderResponse[]> {
     const result = await db.query(
@@ -14,16 +31,7 @@ export class ReminderService {
       [userId]
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      time: row.time,
-      message: row.message,
-      isEnabled: row.is_enabled,
-      daysOfWeek: row.days_of_week,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    return result.rows.map((row) => this.mapToResponse(row));
   }
 
   // 创建提醒
@@ -38,17 +46,7 @@ export class ReminderService {
       [data.type, data.time, data.message || null, data.daysOfWeek || null, userId]
     );
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      type: row.type,
-      time: row.time,
-      message: row.message,
-      isEnabled: row.is_enabled,
-      daysOfWeek: row.days_of_week,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 
   // 更新提醒
@@ -75,17 +73,7 @@ export class ReminderService {
       return null;
     }
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      type: row.type,
-      time: row.time,
-      message: row.message,
-      isEnabled: row.is_enabled,
-      daysOfWeek: row.days_of_week,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 
   // 删除提醒
@@ -114,17 +102,7 @@ export class ReminderService {
       return null;
     }
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      type: row.type,
-      time: row.time,
-      message: row.message,
-      isEnabled: row.is_enabled,
-      daysOfWeek: row.days_of_week,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 }
 

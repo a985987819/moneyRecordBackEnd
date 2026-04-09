@@ -1,13 +1,29 @@
 import { db } from '../config/database';
 import { formatDateTime } from '../utils/date';
-import type {
-  TemplateRequest,
-  TemplateResponse,
-  UseTemplateRequest,
-} from '../types/template';
+import type { TemplateRequest, TemplateResponse, UseTemplateRequest } from '../types/template';
 import type { RecordItem } from '../types/record';
+import { BaseService } from '../utils/base.service';
 
-export class TemplateService {
+export class TemplateService extends BaseService {
+  private mapToResponse(row: Record<string, any>): TemplateResponse {
+    return this.mapRowToResponse<TemplateResponse>(
+      row,
+      {
+        id: row.id,
+        name: row.name,
+        type: row.type,
+        category: row.category,
+        subCategory: row.sub_category,
+        categoryIcon: row.category_icon,
+        amount: parseFloat(row.amount) || undefined,
+        remark: row.remark,
+        account: row.account,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }
+    );
+  }
+
   // 获取所有模板
   async getAllTemplates(userId: number): Promise<TemplateResponse[]> {
     const result = await db.query(
@@ -20,19 +36,7 @@ export class TemplateService {
       [userId]
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      type: row.type,
-      category: row.category,
-      subCategory: row.sub_category,
-      categoryIcon: row.category_icon,
-      amount: row.amount ? parseFloat(row.amount) : undefined,
-      remark: row.remark,
-      account: row.account,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    return result.rows.map((row) => this.mapToResponse(row));
   }
 
   // 创建模板
@@ -57,20 +61,7 @@ export class TemplateService {
       ]
     );
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      name: row.name,
-      type: row.type,
-      category: row.category,
-      subCategory: row.sub_category,
-      categoryIcon: row.category_icon,
-      amount: row.amount ? parseFloat(row.amount) : undefined,
-      remark: row.remark,
-      account: row.account,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 
   // 更新模板
@@ -112,20 +103,7 @@ export class TemplateService {
       return null;
     }
 
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      name: row.name,
-      type: row.type,
-      category: row.category,
-      subCategory: row.sub_category,
-      categoryIcon: row.category_icon,
-      amount: row.amount ? parseFloat(row.amount) : undefined,
-      remark: row.remark,
-      account: row.account,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.mapToResponse(result.rows[0]);
   }
 
   // 删除模板
@@ -143,7 +121,6 @@ export class TemplateService {
     templateId: string,
     data: UseTemplateRequest
   ): Promise<RecordItem | null> {
-    // 获取模板信息
     const templateResult = await db.query(
       `SELECT name, type, category, sub_category, category_icon, amount, remark, account
        FROM record_templates
@@ -156,11 +133,8 @@ export class TemplateService {
     }
 
     const template = templateResult.rows[0];
-    const now = new Date();
-    const date = data.date || now.toISOString();
-    const formattedDate = formatDateTime(date);
+    const formattedDate = formatDateTime(data.date || new Date().toISOString());
 
-    // 使用模板数据或覆盖数据创建记录
     const result = await db.query(
       `INSERT INTO records (type, category, sub_category, category_icon, amount, remark, date, account, user_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)

@@ -1,13 +1,26 @@
 import { db } from '../config/database';
-import type {
-  AccountRequest,
-  AccountResponse,
-  AdjustBalanceRequest,
-  AccountSummary,
-} from '../types/account';
-import { safeParseFloat } from '../utils/validation';
+import type { AccountRequest, AccountResponse, AccountSummary } from '../types/account';
+import { BaseService } from '../utils/base.service';
 
-export class AccountService {
+export class AccountService extends BaseService {
+  private mapToResponse(row: Record<string, any>): AccountResponse {
+    return this.mapRowToResponse<AccountResponse>(
+      row,
+      {
+        id: row.id,
+        name: row.name,
+        type: row.type,
+        icon: row.icon,
+        balance: this.getFloat(row, 'balance', 0),
+        initialBalance: this.getFloat(row, 'initial_balance', 0),
+        isDefault: row.is_default,
+        color: row.color,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }
+    );
+  }
+
   // 获取所有账户
   async getAllAccounts(userId: number): Promise<AccountResponse[]> {
     const result = await db.query(
@@ -20,18 +33,7 @@ export class AccountService {
       [userId]
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      type: row.type,
-      icon: row.icon,
-      balance: safeParseFloat(row.balance, 0),
-      initialBalance: safeParseFloat(row.initial_balance, 0),
-      isDefault: row.is_default,
-      color: row.color,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    return result.rows.map((row) => this.mapToResponse(row));
   }
 
   // 创建账户
@@ -73,18 +75,7 @@ export class AccountService {
       if (!row) {
         throw new Error('账户创建失败');
       }
-      return {
-        id: row.id,
-        name: row.name,
-        type: row.type,
-        icon: row.icon,
-        balance: safeParseFloat(row.balance, 0),
-        initialBalance: safeParseFloat(row.initial_balance, 0),
-        isDefault: row.is_default,
-        color: row.color,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      };
+      return this.mapToResponse(row);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -141,19 +132,7 @@ export class AccountService {
         return null;
       }
 
-      const row = result.rows[0];
-      return {
-        id: row.id,
-        name: row.name,
-        type: row.type,
-        icon: row.icon,
-        balance: safeParseFloat(row.balance, 0),
-        initialBalance: safeParseFloat(row.initial_balance, 0),
-        isDefault: row.is_default,
-        color: row.color,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      };
+      return this.mapToResponse(result.rows[0]);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -207,19 +186,7 @@ export class AccountService {
 
       await client.query('COMMIT');
 
-      const row = result.rows[0];
-      return {
-        id: row.id,
-        name: row.name,
-        type: row.type,
-        icon: row.icon,
-        balance: safeParseFloat(row.balance, 0),
-        initialBalance: safeParseFloat(row.initial_balance, 0),
-        isDefault: row.is_default,
-        color: row.color,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      };
+      return this.mapToResponse(result.rows[0]);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -249,10 +216,10 @@ export class AccountService {
       [userId]
     );
 
-    const byType: Record<string, number> = {};
-    byTypeResult.rows.forEach((row) => {
-      byType[row.type] = safeParseFloat(row.total, 0);
-    });
+      const byType: Record<string, number> = {};
+      byTypeResult.rows.forEach((row) => {
+        byType[row.type] = this.getFloat(row, 'total', 0);
+      });
 
     const row = result.rows[0];
     if (!row) {
@@ -264,9 +231,9 @@ export class AccountService {
       };
     }
     return {
-      totalAssets: safeParseFloat(row.total_assets, 0),
-      totalLiabilities: safeParseFloat(row.total_liabilities, 0),
-      netWorth: safeParseFloat(row.net_worth, 0),
+      totalAssets: mapFloat(row, 'total_assets', 0),
+      totalLiabilities: mapFloat(row, 'total_liabilities', 0),
+      netWorth: mapFloat(row, 'net_worth', 0),
       byType,
     };
   }

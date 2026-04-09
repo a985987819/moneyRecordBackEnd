@@ -1,11 +1,12 @@
 import { db } from '../config/database';
-import type { CategoryRequest, CategoryType, CategoryResponse } from '../types/category';
+import { BaseService } from '../utils/base.service';
+import type { CategoryRequest, CategoryResponse, CategoryType } from '../types/category';
 
 /**
  * 分类服务
  * 处理用户收支分类的CRUD操作
  */
-export class CategoryService {
+export class CategoryService extends BaseService {
   /**
    * 获取支出分类列表
    * @param userId 用户ID
@@ -175,8 +176,8 @@ export class CategoryService {
       icon: String(row.icon),
       type: row.type as CategoryType,
       color: row.color ? String(row.color) : undefined,
-      createdAt: String(row.created_at),
-      updatedAt: String(row.updated_at),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 }
