@@ -63,7 +63,7 @@ export abstract class BaseService {
    * @returns 映射后的对象
    */
   protected mapRowToResponse<T>(row: Record<string, any>, mapping: Record<keyof T, string | ((row: Record<string, any>) => any)>): T {
-    return mapRow(row, mapping);
+    return mapRow(row, mapping) as T;
   }
 
   /**

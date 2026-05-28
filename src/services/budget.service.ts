@@ -177,7 +177,15 @@ export class BudgetService extends BaseService {
       params
     );
 
-    return result.rows.map((row) => this.mapToResponse(row));
+    return result.rows.map((row) => ({
+      id: row.id,
+      year: row.year,
+      month: row.month,
+      amount: this.getFloat(row, 'amount'),
+      spent: this.getFloat(row, 'spent'),
+      remaining: this.getFloat(row, 'remaining'),
+      percentage: this.calculatePercentage(this.getFloat(row, 'spent'), this.getFloat(row, 'amount')),
+    }));
   }
 }
 

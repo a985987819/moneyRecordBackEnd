@@ -15,7 +15,7 @@ import type {
   RecordQueryParams,
   RecordRequest,
   RecordsByDate,
-  RecurrenceFrequency,
+  RecurringFrequency,
   RecurringRecordRequest,
   RecurringRecordResult,
   ReportData,
@@ -37,11 +37,11 @@ export class RecordService extends BaseService {
       [userId, targetMonth]
     );
 
-    const { total_expense, total_income } = result.rows[0];
+    const row = result.rows[0];
 
     return {
-      totalExpense: this.getFloat(result.rows[0], 'total_expense'),
-      totalIncome: this.getFloat(result.rows[0], 'total_income'),
+      totalExpense: this.getFloat(row, 'total_expense'),
+      totalIncome: this.getFloat(row, 'total_income'),
       budget: 5000,
     };
   }

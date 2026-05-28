@@ -46,6 +46,10 @@ export class AccountController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       const body = await c.req.json<Partial<AccountRequest>>();
 
@@ -70,6 +74,10 @@ export class AccountController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       logger.info(`删除账户`, { userId: user.userId, id });
       const deleted = await accountService.deleteAccount(user.userId, id);
@@ -91,6 +99,10 @@ export class AccountController {
   async adjustBalance(c: AuthContext) {
     const user = c.get('user');
     const id = c.req.param('id');
+
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
 
     try {
       const body = await c.req.json<AdjustBalanceRequest>();

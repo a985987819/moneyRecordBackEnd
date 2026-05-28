@@ -176,8 +176,8 @@ export class CategoryService extends BaseService {
       icon: String(row.icon),
       type: row.type as CategoryType,
       color: row.color ? String(row.color) : undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at),
     };
   }
 }

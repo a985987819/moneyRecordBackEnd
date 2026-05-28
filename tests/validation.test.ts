@@ -30,7 +30,7 @@ describe('Validation Utilities', () => {
 
     it('should accept custom min/max', () => {
       expect(validateAmount(50, 10, 100)).toBe(50);
-      expect(validateAmount(5, 10, 100)).toThrow('金额不能小于10');
+      expect(() => validateAmount(5, 10, 100)).toThrow('金额不能小于10');
     });
   });
 

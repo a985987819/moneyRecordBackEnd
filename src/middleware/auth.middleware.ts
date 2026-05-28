@@ -3,16 +3,16 @@ import { verifyAccessToken } from '../utils/token'
 import { db } from '../config/database'
 import { logger } from '../utils/logger'
 
-export interface AuthContext extends Context {
-  Variables: {
-    user: {
-      userId: number
-      username: string
-    }
+export type AuthVariables = {
+  user: {
+    userId: number
+    username: string
   }
 }
 
-export async function authMiddleware(c: AuthContext, next: Next) {
+export type AuthContext = Context<{ Variables: AuthVariables }>
+
+export async function authMiddleware(c: Context, next: Next): Promise<Response | void> {
   const authHeader = c.req.header('Authorization')
   const path = c.req.path
   const method = c.req.method

@@ -51,6 +51,10 @@ export class SavingsController {
     const user = c.get('user');
     const goalId = c.req.param('id');
 
+    if (!goalId) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       const body = await c.req.json<Partial<SavingsGoalRequest>>();
 
@@ -75,6 +79,10 @@ export class SavingsController {
     const user = c.get('user');
     const goalId = c.req.param('id');
 
+    if (!goalId) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       logger.info(`删除储蓄目标`, { userId: user.userId, goalId });
       const deleted = await savingsService.deleteGoal(user.userId, goalId);
@@ -96,6 +104,10 @@ export class SavingsController {
   async deposit(c: Context) {
     const user = c.get('user');
     const goalId = c.req.param('id');
+
+    if (!goalId) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
 
     try {
       const body = await c.req.json<DepositRequest>();
@@ -128,6 +140,10 @@ export class SavingsController {
   async withdraw(c: Context) {
     const user = c.get('user');
     const goalId = c.req.param('id');
+
+    if (!goalId) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
 
     try {
       const body = await c.req.json<WithdrawRequest>();

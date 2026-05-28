@@ -6,22 +6,19 @@ import { BaseService } from '../utils/base.service';
 
 export class TemplateService extends BaseService {
   private mapToResponse(row: Record<string, any>): TemplateResponse {
-    return this.mapRowToResponse<TemplateResponse>(
-      row,
-      {
-        id: row.id,
-        name: row.name,
-        type: row.type,
-        category: row.category,
-        subCategory: row.sub_category,
-        categoryIcon: row.category_icon,
-        amount: parseFloat(row.amount) || undefined,
-        remark: row.remark,
-        account: row.account,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      }
-    );
+    return {
+      id: row.id,
+      name: row.name,
+      type: row.type,
+      category: row.category,
+      subCategory: row.sub_category,
+      categoryIcon: row.category_icon,
+      amount: row.amount ? this.getFloat(row, 'amount') : undefined,
+      remark: row.remark,
+      account: row.account,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
   }
 
   // 获取所有模板

@@ -2,7 +2,11 @@ import type { Context } from 'hono';
 import { recordService } from '../services/record.service';
 import { logger } from '../utils/logger';
 import type { RecordRequest, RecordQueryParams, ImportRecordRequest, BillFilterParams, RecurringRecordRequest } from '../types/record';
-import { safeParseInt, safeParseFloat, validateLimit } from '../utils/validation';
+import { safeParseInt, safeParseFloat } from '../utils/base.service';
+
+function validateLimit(limit: number, min: number = 1, max: number = 100): number {
+  return Math.min(max, Math.max(min, limit));
+}
 
 export class RecordController {
   async getMonthlyStats(c: Context) {
@@ -195,6 +199,10 @@ export class RecordController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       const body = await c.req.json<Partial<RecordRequest>>();
 
@@ -217,6 +225,10 @@ export class RecordController {
   async deleteRecord(c: Context) {
     const user = c.get('user');
     const id = c.req.param('id');
+
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
 
     try {
       logger.info(`删除记录`, { userId: user.userId, recordId: id });

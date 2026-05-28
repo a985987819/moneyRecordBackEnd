@@ -53,6 +53,10 @@ export class ReminderController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       const body = await c.req.json<Partial<ReminderRequest>>();
 
@@ -86,6 +90,10 @@ export class ReminderController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       logger.info(`删除提醒`, { userId: user.userId, id });
       const deleted = await reminderService.deleteReminder(user.userId, id);
@@ -107,6 +115,10 @@ export class ReminderController {
   async toggleReminder(c: Context) {
     const user = c.get('user');
     const id = c.req.param('id');
+
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
 
     try {
       logger.info(`切换提醒状态`, { userId: user.userId, id });

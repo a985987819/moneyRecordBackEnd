@@ -46,6 +46,10 @@ export class TemplateController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       const body = await c.req.json<Partial<TemplateRequest>>();
 
@@ -70,6 +74,10 @@ export class TemplateController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       logger.info(`删除模板`, { userId: user.userId, id });
       const deleted = await templateService.deleteTemplate(user.userId, id);
@@ -91,6 +99,10 @@ export class TemplateController {
   async useTemplate(c: AuthContext) {
     const user = c.get('user');
     const id = c.req.param('id');
+
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
 
     try {
       const body = await c.req.json<UseTemplateRequest>();

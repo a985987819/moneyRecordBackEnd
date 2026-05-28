@@ -51,6 +51,10 @@ export class DebtController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       const body = await c.req.json<Partial<DebtRequest>>();
 
@@ -75,6 +79,10 @@ export class DebtController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       logger.info(`删除借贷记录`, { userId: user.userId, id });
       const deleted = await debtService.deleteDebt(user.userId, id);
@@ -96,6 +104,10 @@ export class DebtController {
   async repay(c: Context) {
     const user = c.get('user');
     const id = c.req.param('id');
+
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
 
     try {
       const body = await c.req.json<RepayRequest>();

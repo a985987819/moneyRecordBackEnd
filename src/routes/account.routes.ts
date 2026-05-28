@@ -1,29 +1,22 @@
 import { Hono } from 'hono';
 import { accountController } from '../controllers/account.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
-import type { AuthContext } from '../middleware/auth.middleware';
+import type { AuthVariables } from '../middleware/auth.middleware';
 
-const accountRoutes = new Hono();
+const accountRoutes = new Hono<{ Variables: AuthVariables }>();
 
-// 所有账户接口都需要认证
 accountRoutes.use('*', authMiddleware);
 
-// 获取所有账户
-accountRoutes.get('/', (c: AuthContext) => accountController.getAllAccounts(c));
+accountRoutes.get('/', (c) => accountController.getAllAccounts(c));
 
-// 获取账户统计
-accountRoutes.get('/summary', (c: AuthContext) => accountController.getSummary(c));
+accountRoutes.get('/summary', (c) => accountController.getSummary(c));
 
-// 创建账户
-accountRoutes.post('/', (c: AuthContext) => accountController.createAccount(c));
+accountRoutes.post('/', (c) => accountController.createAccount(c));
 
-// 更新账户
-accountRoutes.put('/:id', (c: AuthContext) => accountController.updateAccount(c));
+accountRoutes.put('/:id', (c) => accountController.updateAccount(c));
 
-// 删除账户
-accountRoutes.delete('/:id', (c: AuthContext) => accountController.deleteAccount(c));
+accountRoutes.delete('/:id', (c) => accountController.deleteAccount(c));
 
-// 调整余额
-accountRoutes.post('/:id/adjust', (c: AuthContext) => accountController.adjustBalance(c));
+accountRoutes.post('/:id/adjust', (c) => accountController.adjustBalance(c));
 
 export { accountRoutes };

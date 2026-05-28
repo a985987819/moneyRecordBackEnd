@@ -51,6 +51,10 @@ export class RecurringController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       const body = await c.req.json<Partial<RecurringRecordRequest>>();
 
@@ -75,6 +79,10 @@ export class RecurringController {
     const user = c.get('user');
     const id = c.req.param('id');
 
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
+
     try {
       logger.info(`删除周期记账`, { userId: user.userId, id });
       const deleted = await recurringService.deleteRecurring(user.userId, id);
@@ -96,6 +104,10 @@ export class RecurringController {
   async toggleRecurring(c: Context) {
     const user = c.get('user');
     const id = c.req.param('id');
+
+    if (!id) {
+      return c.json({ error: 'ID参数缺失' }, 400);
+    }
 
     try {
       logger.info(`切换周期记账状态`, { userId: user.userId, id });

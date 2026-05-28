@@ -16,8 +16,12 @@ import { logger } from './utils/logger'
 
 const app = new Hono()
 
+const port = parseInt(process.env.PORT || '9876', 10)
+const hostname = process.env.HOST || '0.0.0.0'
+const corsOrigin = process.env.CORS_ORIGIN || '*'
+
 app.use('*', cors({
-  origin: '*',
+  origin: corsOrigin,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -73,9 +77,6 @@ app.get('/health', async (c) => {
   }
 })
 
-const port = 9876
-const hostname = '0.0.0.0'
-
 logger.info(`服务器启动`, { port, hostname })
 
 initDatabase().then(() => {
@@ -84,7 +85,7 @@ initDatabase().then(() => {
     fetch: app.fetch,
     port,
     hostname,
-    idleTimeout: 60, // 设置超时时间为60秒
+    idleTimeout: 60,
   })
 }).catch((error) => {
   logger.error(`数据库初始化失败`, error)

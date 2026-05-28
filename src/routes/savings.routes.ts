@@ -1,32 +1,24 @@
 import { Hono } from 'hono';
 import { savingsController } from '../controllers/savings.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
-import type { AuthContext } from '../middleware/auth.middleware';
+import type { AuthVariables } from '../middleware/auth.middleware';
 
-const savingsRoutes = new Hono();
+const savingsRoutes = new Hono<{ Variables: AuthVariables }>();
 
-// 所有储蓄接口都需要认证
 savingsRoutes.use('*', authMiddleware);
 
-// 获取所有储蓄目标
-savingsRoutes.get('/goals', (c: AuthContext) => savingsController.getAllGoals(c));
+savingsRoutes.get('/goals', (c) => savingsController.getAllGoals(c));
 
-// 获取储蓄统计
-savingsRoutes.get('/summary', (c: AuthContext) => savingsController.getSummary(c));
+savingsRoutes.get('/summary', (c) => savingsController.getSummary(c));
 
-// 创建储蓄目标
-savingsRoutes.post('/goals', (c: AuthContext) => savingsController.createGoal(c));
+savingsRoutes.post('/goals', (c) => savingsController.createGoal(c));
 
-// 更新储蓄目标
-savingsRoutes.put('/goals/:id', (c: AuthContext) => savingsController.updateGoal(c));
+savingsRoutes.put('/goals/:id', (c) => savingsController.updateGoal(c));
 
-// 删除储蓄目标
-savingsRoutes.delete('/goals/:id', (c: AuthContext) => savingsController.deleteGoal(c));
+savingsRoutes.delete('/goals/:id', (c) => savingsController.deleteGoal(c));
 
-// 向目标存钱
-savingsRoutes.post('/goals/:id/deposit', (c: AuthContext) => savingsController.deposit(c));
+savingsRoutes.post('/goals/:id/deposit', (c) => savingsController.deposit(c));
 
-// 从目标取钱
-savingsRoutes.post('/goals/:id/withdraw', (c: AuthContext) => savingsController.withdraw(c));
+savingsRoutes.post('/goals/:id/withdraw', (c) => savingsController.withdraw(c));
 
 export { savingsRoutes };

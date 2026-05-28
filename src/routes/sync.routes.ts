@@ -1,23 +1,18 @@
 import { Hono } from 'hono';
 import { syncController } from '../controllers/sync.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
-import type { AuthContext } from '../middleware/auth.middleware';
+import type { AuthVariables } from '../middleware/auth.middleware';
 
-const syncRoutes = new Hono();
+const syncRoutes = new Hono<{ Variables: AuthVariables }>();
 
-// 所有同步接口都需要认证
 syncRoutes.use('*', authMiddleware);
 
-// 上传数据到云端
-syncRoutes.post('/upload', (c: AuthContext) => syncController.uploadData(c));
+syncRoutes.post('/upload', (c) => syncController.uploadData(c));
 
-// 从云端下载数据
-syncRoutes.get('/download', (c: AuthContext) => syncController.downloadData(c));
+syncRoutes.get('/download', (c) => syncController.downloadData(c));
 
-// 获取历史版本列表
-syncRoutes.get('/versions', (c: AuthContext) => syncController.getVersions(c));
+syncRoutes.get('/versions', (c) => syncController.getVersions(c));
 
-// 恢复到指定版本
-syncRoutes.post('/restore/:versionId', (c: AuthContext) => syncController.restoreVersion(c));
+syncRoutes.post('/restore/:versionId', (c) => syncController.restoreVersion(c));
 
 export { syncRoutes };

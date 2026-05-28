@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import { syncService } from '../services/sync.service';
 import { logger } from '../utils/logger';
 import type { SyncData } from '../types/sync';
-import { safeParseInt } from '../utils/validation';
+import { safeParseInt } from '../utils/base.service';
 
 export class SyncController {
   // 上传数据
@@ -69,6 +69,10 @@ export class SyncController {
   async restoreVersion(c: Context) {
     const user = c.get('user');
     const versionId = c.req.param('versionId');
+
+    if (!versionId) {
+      return c.json({ error: 'versionId参数缺失' }, 400);
+    }
 
     try {
       logger.info(`恢复到指定版本`, { userId: user.userId, versionId });

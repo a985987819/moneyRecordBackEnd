@@ -8,26 +8,23 @@ import { BaseService } from '../utils/base.service';
 
 export class RecurringService extends BaseService {
   private mapToResponse(row: Record<string, any>): RecurringRecordResponse {
-    return this.mapRowToResponse<RecurringRecordResponse>(
-      row,
-      {
-        id: row.id,
-        type: row.type,
-        category: row.category,
-        subCategory: row.sub_category,
-        categoryIcon: row.category_icon,
-        amount: this.getFloat(row, 'amount'),
-        remark: row.remark,
-        frequency: row.frequency,
-        startDate: row.start_date,
-        endDate: row.end_date,
-        nextExecuteDate: row.next_execute_date,
-        account: row.account,
-        isActive: row.is_active,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      }
-    );
+    return {
+      id: row.id,
+      type: row.type,
+      category: row.category,
+      subCategory: row.sub_category,
+      categoryIcon: row.category_icon,
+      amount: this.getFloat(row, 'amount'),
+      remark: row.remark,
+      frequency: row.frequency,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      nextExecuteDate: row.next_execute_date,
+      account: row.account,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
   }
 
   // 计算下一次执行日期
